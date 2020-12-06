@@ -1,8 +1,12 @@
 import { Pool } from "pg"
 import { DatabaseError } from 'pg-protocol'
-import { HostRepository } from './HostRepository'
-import Host, { HostPage, HostSaveResult, SaveStatus } from './Host'
-import * as _ from 'lodash'
+import { HostRepository } from '../../HostRepository'
+import {isEqual} from "../../modules/lodash";
+import LogService from "../../services/LogService";
+import Host, { HostPage, HostSaveResult, SaveStatus } from '../../Host'
+import {PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER} from "../../constants/env";
+
+const LOG = LogService.createLogger('PgHostRepository');
 
 const findById = 'SELECT * FROM hosts WHERE id = $1 AND NOT deleted'
 const findByIdAllowDeleted = 'SELECT * FROM hosts WHERE id = $1'
@@ -20,11 +24,11 @@ class PgHostRepository implements HostRepository {
 
     public initialize(): void {
         this.pool = new Pool({
-            host: process.env.PG_HOST,
-            port: parseInt(process.env.PG_PORT, 10),
-            database: process.env.PG_DBNAME,
-            user: process.env.PG_USER,
-            password: process.env.PG_PASSWORD,
+            host: PG_HOST,
+            port: PG_PORT,
+            database: PG_DBNAME,
+            user: PG_USER,
+            password: PG_PASSWORD
         });
     }
 
@@ -80,7 +84,7 @@ class PgHostRepository implements HostRepository {
         })
     }
 
-    public createOrUupdate(host: Host, id: string): Promise<HostSaveResult> {
+    public createOrUpdate(host: Host, id: string): Promise<HostSaveResult> {
         const newHost = { ...host }
         return new Promise((resolve, reject) => {
             this.findById(id, true)
@@ -109,6 +113,8 @@ class PgHostRepository implements HostRepository {
                         return resolve(result)
                     }
                     this.findByName(newHost.name).then(current => {
+                        // FIXME: Handle undefined case
+                        if (current === undefined) throw new TypeError('current was undefined');
                         if (this.areEqual(current, newHost)) {
                             return resolve({ host: current, status: SaveStatus.NotChanged })
                         }
@@ -138,7 +144,7 @@ class PgHostRepository implements HostRepository {
     }
 
     private areEqual(current: Host, host: Host) {
-        return !current.deleted && current.name === host.name && _.isEqual(current.data, host.data)
+        return !current.deleted && current.name === host.name && isEqual(current.data, host.data)
     }
 
     private update(current: Host, host: Host) {
@@ -153,6 +159,7 @@ class PgHostRepository implements HostRepository {
             reject(err)
         }
     }
+
 }
 
 export function createRepository(): HostRepository {

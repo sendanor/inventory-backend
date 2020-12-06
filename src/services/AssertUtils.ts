@@ -1,20 +1,36 @@
+import {
+    isString,
+    isObject,
+    isArray
+} from "../modules/lodash";
 
 export class Test {
 
     static isString (value: any) : boolean {
-        return typeof value === 'string';
+        return isString(value);
     }
 
+    /**
+     * Test if it is an regular object.
+     *
+     * @param value
+     */
     static isObject (value: any) : boolean {
-        return value && typeof value === 'object' && !(value instanceof Array);
+        return isObject(value) && !isArray(value);
     }
 
+    /**
+     * Test if the value is an array
+     *
+     * @param value
+     */
     static isArray (value: any) : value is Array<any> {
-        return value && typeof value === 'object' && value instanceof Array;
+        return isArray(value);
     }
 
     static isPromise (value: any) : value is Promise<any> {
-        return !!value && !!value.then && !!value.catch;
+        // @ts-ignore
+        return isObject(value) && !!value.then && !!value.catch;
     }
 
 }
@@ -28,7 +44,7 @@ export class AssertUtils {
      * @param value1
      * @param value2
      */
-    public static equals (value1, value2) {
+    public static equals (value1 : any, value2 : any) {
 
         if (value1 !== value2) {
             throw new TypeError('Values were not equal: '+ value1 + ' !== ' + value2);
@@ -36,7 +52,7 @@ export class AssertUtils {
 
     }
 
-    public static isEqual (value1, value2) {
+    public static isEqual (value1  : any, value2 : any) {
 
         if (value1 !== value2) {
             throw new TypeError('Values were not equal: '+ value1 + ' !== ' + value2);
@@ -44,7 +60,7 @@ export class AssertUtils {
 
     }
 
-    public static notEqual (value1, value2) {
+    public static notEqual (value1 : any, value2 : any) {
 
         if (value1 === value2) {
             throw new TypeError('Values were equal: '+ value1 + ' === ' + value2);
@@ -52,7 +68,7 @@ export class AssertUtils {
 
     }
 
-    public static isLessThanOrEqual (value1, value2) {
+    public static isLessThanOrEqual (value1 : number, value2 : number) {
 
         if (!(value1 <= value2)) {
             throw new TypeError('Value is not less than or equal: !('+ value1 + ' <= ' + value2 + ')');
@@ -60,7 +76,7 @@ export class AssertUtils {
 
     }
 
-    public static isLessThan (value1, value2) {
+    public static isLessThan (value1 : number, value2 : number) {
 
         if (!(value1 < value2)) {
             throw new TypeError('Value is not less than or equal: !('+ value1 + ' < ' + value2 + ')');
@@ -68,7 +84,7 @@ export class AssertUtils {
 
     }
 
-    public static isTrue (value : any) {
+    public static isTrue (value : boolean| undefined) {
 
         if (value !== true) {
             throw new TypeError('Value was not true: '+ value);
@@ -76,7 +92,7 @@ export class AssertUtils {
 
     }
 
-    public static notTrue (value : any) {
+    public static notTrue (value : boolean| undefined) {
 
         if (value === true) {
             throw new TypeError('Value was true: '+ value);
@@ -84,7 +100,7 @@ export class AssertUtils {
 
     }
 
-    public static isFalse (value : any) {
+    public static isFalse (value : boolean| undefined) {
 
         if (value !== false) {
             throw new TypeError('Value was not false: '+ value);
@@ -92,7 +108,7 @@ export class AssertUtils {
 
     }
 
-    public static notFalse (value : any) {
+    public static notFalse (value : boolean| undefined) {
 
         if (value === false) {
             throw new TypeError('Value was false: '+ value);
@@ -116,7 +132,7 @@ export class AssertUtils {
 
     }
 
-    public static isString (value : any) {
+    public static isString (value : string | undefined) {
 
         if (!Test.isString(value)) {
             throw new TypeError('Value was not string: ' + value);
@@ -124,7 +140,7 @@ export class AssertUtils {
 
     }
 
-    public static notString (value : any) {
+    public static notString (value : string | undefined) {
 
         if (Test.isString(value)) {
             throw new TypeError('Value was string: ' + value);

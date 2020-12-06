@@ -2,8 +2,11 @@ import { IncomingMessage, ServerResponse } from "http"
 import { HostRepository } from "./HostRepository"
 import Host, { HostPage, HostSaveResult, SaveStatus } from './Host'
 import validate from './DefaultHostValidator'
+import LogService from "./services/LogService";
 
-enum Method {
+const LOG = LogService.createLogger('HostController');
+
+export enum Method {
     GET = 'get',
     POST = 'post',
     PUT = 'put',
@@ -11,7 +14,7 @@ enum Method {
     PATCH = 'patch',
 }
 
-enum Status {
+export enum Status {
     OK = 200,
     Created = 201,
     BadRequest = 400,
@@ -20,9 +23,16 @@ enum Status {
     InternalError = 500,
 }
 
-interface Request { method?: Method, url: string, id?: string, page?: number, size?: number }
+export interface Request {
+    method?: Method,
+    url: string,
+    id?: string,
+    page?: number,
+    size?: number
+}
 
 export class HostController {
+
     private repository: HostRepository
 
     constructor(repository: HostRepository) {
@@ -42,27 +52,27 @@ export class HostController {
             const pagePattern: RegExp = /\/hosts.+page=(.+)/
             const url = req.url!
             const idMatch = url.match(idPattern)
-            const pageMatch = url.match(pagePattern)
-            const sizeMatch = url.match(sizePattern)
+            const pageMatch : Array<string> | null = url.match(pagePattern)
+            const sizeMatch : Array<string> | null = url.match(sizePattern)
             const id = idMatch ? idMatch[1] : undefined
-            const page = this.parsePositiveIntMatch(pageMatch)
-            const size = this.parsePositiveIntMatch(sizeMatch)
+            const page : number | undefined = this.parsePositiveIntMatch(pageMatch)
+            const size : number | undefined = this.parsePositiveIntMatch(sizeMatch)
             switch (req.method!.toLowerCase()) {
-                case 'get': resolve({ method: Method.GET, url, id, page, size })
-                case 'post': resolve({ method: Method.POST, url })
-                case 'put': resolve({ method: Method.PUT, url, id })
-                case 'delete': resolve({ method: Method.DELETE, url, id })
-                case 'patch': resolve({ method: Method.PATCH, url, id })
+                case 'get': resolve({ method: Method.GET, url, id, page, size }); return;
+                case 'post': resolve({ method: Method.POST, url }); return;
+                case 'put': resolve({ method: Method.PUT, url, id }); return;
+                case 'delete': resolve({ method: Method.DELETE, url, id }); return;
+                case 'patch': resolve({ method: Method.PATCH, url, id }); return;
             }
             resolve({ url, id })
         })
     }
 
-    private parsePositiveIntMatch(match) {
-        if (match && parseInt(match[1]) > 0) {
-            return parseInt(match[1])
+    private parsePositiveIntMatch (match : Array<string> | null) : number | undefined {
+        if (match && parseInt(match[1], 10) > 0) {
+            return parseInt(match[1], 10)
         }
-        return null
+        return undefined
     }
 
     public processRequest(req: IncomingMessage, res: ServerResponse, request: Request) {
@@ -98,7 +108,7 @@ export class HostController {
 
         } else if (method === Method.PUT && id) {
             this.getValidRequestBody(req)
-                .then(host => this.repository.createOrUupdate(host, id)
+                .then(host => this.repository.createOrUpdate(host, id)
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
@@ -142,7 +152,11 @@ export class HostController {
     }
 
     private sanitizeHost(host: Host) {
-        return { id: host.id, name: host.name, data: host.data }
+        return {
+            id: host.id,
+            name: host.name,
+            data: host.data
+        };
     }
 
     private getValidRequestBody(req: IncomingMessage): Promise<Host> {
@@ -182,14 +196,15 @@ export class HostController {
     }
 
     private writeBadRequest(res: ServerResponse, err: Error) {
+        LOG.debug('Sent BadRequest error to the client: ', err);
         this.writeResponse(res, Status.BadRequest, { reason: err.message }, false)
     }
 
     private writeInternalError(res: ServerResponse, err: any) {
-        console.error(err)
+        LOG.error('InternalError: ', err);
         this.writeResponse(res, Status.InternalError, { reason: "Internal server error" }, false)
     }
+
 }
 
 export default HostController
-
