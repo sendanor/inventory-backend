@@ -1,9 +1,15 @@
 import AssertUtils from "./AssertUtils";
+import {trim} from "../modules/lodash";
 
-const FS = require('fs');
+const FS   = require('fs');
 const PATH = require('path');
 
 export class ProcessUtils {
+
+    static getArguments () : Array<string> {
+        AssertUtils.isArray(process.argv);
+        return process.argv.slice(2);
+    }
 
     static parseEnvFileLine (obj : Record<string, string>, line : string) : Record<string, string> {
 
@@ -20,7 +26,7 @@ export class ProcessUtils {
         const parts = line.split('=');
         let key = parts.shift();
         AssertUtils.isString(key);
-        key = key.trim();
+        key = trim(key);
         if (key.length) {
             obj[key] = parts.join('=').trim();
         }
@@ -59,7 +65,9 @@ export class ProcessUtils {
 
         const file = PATH.join(process.cwd(), '.env');
 
-        ProcessUtils.initEnvFromFile(file);
+        if (FS.existsSync(file)) {
+            ProcessUtils.initEnvFromFile(file);
+        }
 
     }
 
