@@ -3,6 +3,7 @@ import Host, {HostPage, HostSaveResult, SaveStatus} from '../../types/Host'
 import {isEqual, has, keys, map, slice} from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import {v4 as uuidV4} from "uuid";
+import HostUtils from "../../services/HostUtils";
 
 const LOG = LogService.createLogger('MemoryHostRepository');
 
@@ -109,7 +110,7 @@ class MemoryHostRepository implements HostRepository {
 
                 if (has(this._cache, newHost.id)) {
 
-                    if (MemoryHostRepository.areEqual(newHost, this._cache[newHost.id])) {
+                    if (HostUtils.areEqualHosts(newHost, this._cache[newHost.id])) {
                         status = SaveStatus.NotChanged;
                     } else {
                         this._cache[newHost.id] = newHost;
@@ -248,10 +249,6 @@ class MemoryHostRepository implements HostRepository {
             }
 
         });
-    }
-
-    public static areEqual (current: Host, host: Host) {
-        return !current.deleted && current.name === host.name && isEqual(current.data, host.data)
     }
 
 }

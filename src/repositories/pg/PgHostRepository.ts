@@ -1,10 +1,10 @@
 import { Pool } from "pg"
 import { DatabaseError } from 'pg-protocol'
 import { HostRepository } from '../../types/HostRepository'
-import {isEqual} from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import Host, { HostPage, HostSaveResult, SaveStatus } from '../../types/Host'
 import {PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER} from "../../constants/env";
+import HostUtils from "../../services/HostUtils";
 
 const LOG = LogService.createLogger('PgHostRepository');
 
@@ -92,7 +92,7 @@ class PgHostRepository implements HostRepository {
                     if (!current) {
                         return this.create(newHost, id).then(result => resolve(result))
                     } else {
-                        if (this.areEqual(current, newHost)) {
+                        if (HostUtils.areEqualHosts(current, newHost)) {
                             return resolve({ host: current, status: SaveStatus.NotChanged })
                         }
                         const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
@@ -141,10 +141,6 @@ class PgHostRepository implements HostRepository {
                 .then(response => resolve(response.rows[0]))
                 .catch(err => reject(err))
         })
-    }
-
-    private areEqual(current: Host, host: Host) {
-        return !current.deleted && current.name === host.name && isEqual(current.data, host.data)
     }
 
     private update(current: Host, host: Host) {
