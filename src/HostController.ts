@@ -2,15 +2,18 @@ import { IncomingMessage, ServerResponse } from "http"
 import { HostRepository } from "./HostRepository"
 import Host, { HostSaveResult } from './Host'
 import validate from './DefaultHostValidator'
+import LogService from "./services/LogService";
 
-enum Method {
+const LOG = LogService.createLogger('HostController');
+
+export enum Method {
     GET = 'get',
     POST = 'post',
     PUT = 'put',
     DELETE = 'delete',
 }
 
-enum Status {
+export enum Status {
     OK = 200,
     BadRequest = 400,
     NotFound = 404,
@@ -18,9 +21,16 @@ enum Status {
     InternalError = 500,
 }
 
-interface Request { method?: Method, url: string, id?: string, page?: number, size?: number }
+export interface Request {
+    method?: Method,
+    url: string,
+    id?: string,
+    page?: number,
+    size?: number
+}
 
 export class HostController {
+
     private repository: HostRepository
 
     constructor(repository: HostRepository) {
@@ -137,14 +147,15 @@ export class HostController {
     }
 
     private writeBadRequest(res: ServerResponse, err: Error) {
+        LOG.debug('Sent BadRequest error to the client: ', err);
         this.writeResponse(res, Status.BadRequest, err.message, false)
     }
 
     private writeError(res: ServerResponse, err: any) {
-        console.error(err)
+        LOG.error('InternalError: ', err);
         this.writeResponse(res, Status.InternalError, undefined, false)
     }
+
 }
 
 export default HostController
-
