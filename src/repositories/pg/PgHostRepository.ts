@@ -115,7 +115,7 @@ class PgHostRepository implements HostRepository {
                     this.findByName(newHost.name).then(current => {
                         // FIXME: Handle undefined case
                         if (current === undefined) throw new TypeError('current was undefined');
-                        if (this.areEqual(current, newHost)) {
+                        if (HostUtils.areEqualHosts(current, newHost)) {
                             return resolve({ host: current, status: SaveStatus.NotChanged })
                         }
                         const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated

@@ -162,7 +162,7 @@ class MemoryHostRepository implements HostRepository {
 
                 if (has(this._cache, newHost.id)) {
 
-                    if (MemoryHostRepository.areEqual(newHost, this._cache[newHost.id])) {
+                    if (HostUtils.areEqualHosts(newHost, this._cache[newHost.id])) {
                         status = SaveStatus.NotChanged;
                     } else {
                         this._cache[newHost.id] = newHost;
@@ -207,7 +207,7 @@ class MemoryHostRepository implements HostRepository {
 
                 if (current) {
 
-                    if ( MemoryHostRepository.areEqual(current, newHost) ) {
+                    if ( HostUtils.areEqualHosts(current, newHost) ) {
 
                         resolve({ host: {...current}, status: SaveStatus.NotChanged });
 
