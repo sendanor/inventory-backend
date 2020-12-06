@@ -2,7 +2,11 @@ import { Pool } from "pg"
 import { DatabaseError } from 'pg-protocol'
 import { HostRepository } from './HostRepository'
 import Host, { HostPage, HostSaveResult } from './Host'
-import * as _ from 'lodash'
+import {PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER} from "./constants/env";
+import {isEqual} from "./modules/lodash";
+import LogService from "./services/LogService";
+
+const LOG = LogService.createLogger('PgHostRepository');
 
 const get = 'SELECT * FROM hosts WHERE id = $1 AND NOT deleted'
 const getPage = 'SELECT id, name, data FROM hosts WHERE NOT deleted ORDER BY name OFFSET $1 LIMIT $2'
@@ -17,11 +21,11 @@ class PgHostRepository implements HostRepository {
 
     public initialize(): void {
         this.pool = new Pool({
-            host: process.env.PG_HOST,
-            port: parseInt(process.env.PG_PORT, 10),
-            database: process.env.PG_DBNAME,
-            user: process.env.PG_USER,
-            password: process.env.PG_PASSWORD,
+            host: PG_HOST,
+            port: PG_PORT,
+            database: PG_DBNAME,
+            user: PG_USER,
+            password: PG_PASSWORD
         });
     }
 
@@ -64,12 +68,20 @@ class PgHostRepository implements HostRepository {
     public update(id: string, host: Host): Promise<HostSaveResult> {
         return new Promise((resolve, reject) => {
             this.get(id).then(current => {
-                if (current.name === host.name && _.isEqual(current.data, host.data)) {
-                    return resolve({ host: current, changed: false })
+                if (current) {
+
+                    if (current.name === host.name && isEqual(current.data, host.data)) {
+                        return resolve({ host: current, changed: false })
+                    }
+
+                    this.pool.query(update, [id, host.name, host.data])
+                        .then(response => resolve({ host: response.rows[0], changed: true }))
+                        .catch(err => this.handleSaveError(err, resolve, reject))
+
+                } else {
+                    // FIXME: This should be handled correctly. 404 maybe?
+                    LOG.warn('No resource found for ID: ', id);
                 }
-                this.pool.query(update, [id, host.name, host.data])
-                    .then(response => resolve({ host: response.rows[0], changed: true }))
-                    .catch(err => this.handleSaveError(err, resolve, reject))
             })
         })
     }
