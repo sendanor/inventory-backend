@@ -1,7 +1,10 @@
+import { ProcessUtils } from './services/ProcessUtils'
+ProcessUtils.initEnvFromDefaultFiles();
+
 import { createRepository as createPgRepository } from "./PgHostRepository"
 import { createRepository as createMemoryRepository } from "./repositories/memory/MemoryHostRepository"
 import HostController from "./HostController"
-import { ProcessUtils } from './services/ProcessUtils'
+
 import HTTP = require('http')
 import {IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY} from "./constants/env";
 import LogService from "./services/LogService";
@@ -27,7 +30,6 @@ function createRepository () : HostRepository {
 
 try {
 
-    ProcessUtils.initEnvFromDefaultFiles();
     const controller = new HostController(createRepository());
     const server = HTTP.createServer(controller.requestListener.bind(controller));
     server.listen(IB_LISTEN_PORT, IB_LISTEN_HOSTNAME);
