@@ -66,6 +66,7 @@ export interface HostRepository {
 
     /**
      * Deletes a host
+     *
      * @param id Id of the host to be deleted
      * @returns True, if delete succeeded
      */

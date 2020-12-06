@@ -55,6 +55,7 @@ Commercial support up to 10 years is available from [Sendanor](https://sendanor.
     "reason": "Internal server error"
 }
 ```
+
 ## Get host
 
 **URL** : `/hosts/:id` or `/hosts/:name`
