@@ -11,6 +11,7 @@ export interface HostRepository {
 
     /**
      * Searches for a host by an id
+     *
      * @param id Id of the host to search for
      * @param allowDeleted true, if hosts marked as 'deleted' should be searched also
      * @returns Host, if one was found, undefined otherwise
@@ -19,7 +20,8 @@ export interface HostRepository {
 
     /**
      * Searches for a host by a name
-     * @param name Name of the host to search for
+     *
+     * @param id Name of the host to search for
      * @param allowDeleted true, if hosts marked as 'deleted' should be searched also
      * @returns Host, if one was found, undefined otherwise
      */
@@ -27,6 +29,7 @@ export interface HostRepository {
 
     /**
      * Gets one page of hosts
+     *
      * @param page page number, starting from 1
      * @param size page size
      * @returns Page of hosts
@@ -35,6 +38,7 @@ export interface HostRepository {
 
     /**
      * Creates a new host
+     *
      * @param host Host data
      * @param id? Id to be assigned for a new host. If undefined, storage should generate the id
      * @returns HostSaveResult indicating result of save operation
@@ -55,6 +59,7 @@ export interface HostRepository {
      * @returns True, if delete succeeded
      */
     delete(id: string): Promise<boolean>
+
 }
 
 export default HostRepository;
