@@ -1,5 +1,5 @@
 import { HostRepository } from '../../HostRepository'
-import Host, {HostPage, HostSaveResult, SaveStatus} from '../../Host'
+import Host, {HostPage, HostSaveResult, SaveStatus} from '../../types/Host'
 import {isEqual, has, keys, map, slice} from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import {v4 as uuidV4} from "uuid";

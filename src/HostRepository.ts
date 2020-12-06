@@ -1,4 +1,4 @@
-import Host, { HostPage, HostSaveResult } from './Host';
+import Host, { HostPage, HostSaveResult } from './types/Host';
 
 export interface HostRepository {
     initialize(): void

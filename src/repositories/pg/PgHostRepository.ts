@@ -3,7 +3,7 @@ import { DatabaseError } from 'pg-protocol'
 import { HostRepository } from '../../HostRepository'
 import {isEqual} from "../../modules/lodash";
 import LogService from "../../services/LogService";
-import Host, { HostPage, HostSaveResult, SaveStatus } from '../../Host'
+import Host, { HostPage, HostSaveResult, SaveStatus } from '../../types/Host'
 import {PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER} from "../../constants/env";
 
 const LOG = LogService.createLogger('PgHostRepository');
