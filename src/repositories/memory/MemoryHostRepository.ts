@@ -1,6 +1,6 @@
 import { HostRepository } from '../../types/HostRepository'
 import Host, { HostPage, HostSaveResult, SaveStatus } from '../../types/Host'
-import {has, keys, map, slice, filter, find, remove} from "../../modules/lodash";
+import {has, keys, map, slice, filter, find, remove, forEach} from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import { v4 as uuidV4 } from "uuid";
 import HostUtils from "../../services/HostUtils";
@@ -246,7 +246,7 @@ export class MemoryHostRepository implements HostRepository {
 
                 } else {
 
-                    this._cache[newId] = {
+                    this._cache[id] = {
                         host: newHost,
                         deleted: false
                     };
@@ -310,10 +310,21 @@ export class MemoryHostRepository implements HostRepository {
 
     protected _deleteSoftDeletedItems () {
 
-        const items = remove(this._cache, (item : CacheRecord) : boolean => item.deleted);
+        let softDeletedItems : number = 0;
 
-        if (items.length) {
-            LOG.info(`Deleted permanently ${items.length} items which were previously soft deleted`);
+        forEach(keys(this._cache), (key: string) => {
+
+            const item = this._cache[key];
+
+            if (item.deleted) {
+                delete this._cache[key];
+                softDeletedItems += 1;
+            }
+
+        });
+
+        if (softDeletedItems >= 1) {
+            LOG.info(`Deleted permanently ${softDeletedItems} items which were previously soft deleted`);
         } else {
             LOG.debug('There were no soft deleted items.');
         }

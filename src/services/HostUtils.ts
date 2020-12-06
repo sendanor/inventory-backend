@@ -1,5 +1,5 @@
 import Host from "../types/Host";
-import {isEqual, isObject, isString} from "../modules/lodash";
+import {isEqual, isString} from "../modules/lodash";
 
 export class HostUtils {
 
@@ -17,7 +17,7 @@ export class HostUtils {
     }
 
     public static areEqualHostsIncludingId (current: Host, host: Host) : boolean {
-        return isHost(current) && isHost(host) && current.id === host.id && this.areEqualHosts(host);
+        return HostUtils.isHost(current) && HostUtils.isHost(host) && current.id === host.id && HostUtils.areEqualHosts(current, host);
     }
 
 }
