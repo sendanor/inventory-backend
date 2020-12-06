@@ -84,7 +84,7 @@ class PgHostRepository implements HostRepository {
         })
     }
 
-    public createOrUupdate(host: Host, id: string): Promise<HostSaveResult> {
+    public createOrUpdate(host: Host, id: string): Promise<HostSaveResult> {
         const newHost = { ...host }
         return new Promise((resolve, reject) => {
             this.findById(id, true)

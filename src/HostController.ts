@@ -108,7 +108,7 @@ export class HostController {
 
         } else if (method === Method.PUT && id) {
             this.getValidRequestBody(req)
-                .then(host => this.repository.createOrUupdate(host, id)
+                .then(host => this.repository.createOrUpdate(host, id)
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))

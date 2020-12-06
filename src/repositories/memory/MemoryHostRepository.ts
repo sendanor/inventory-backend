@@ -1,6 +1,6 @@
 import { HostRepository } from '../../HostRepository'
-import Host, { HostPage, HostSaveResult } from '../../Host'
-import {isEqual, has, get, set, keys, map, slice} from "../../modules/lodash";
+import Host, {HostPage, HostSaveResult, SaveStatus} from '../../Host'
+import {isEqual, has, keys, map, slice} from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import {v4 as uuidV4} from "uuid";
 
@@ -14,11 +14,11 @@ class MemoryHostRepository implements HostRepository {
         this._cache = {};
     }
 
-    public initialize(): void {
+    public initialize (): void {
         this._cache = {};
     }
 
-    public get (id: string): Promise<Host | undefined> {
+    public findById (id: string, allowDeleted?: true): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
 
             try {
@@ -26,6 +26,22 @@ class MemoryHostRepository implements HostRepository {
                     resolve({...this._cache[id]});
                 } else {
                     resolve(undefined);
+                }
+            } catch (err) {
+                reject(err);
+            }
+
+        });
+    }
+
+    public getById (id: string, allowDeleted?: true): Promise<Host> {
+        return new Promise((resolve, reject) => {
+
+            try {
+                if (has(this._cache, id)) {
+                    resolve({...this._cache[id]});
+                } else {
+                    throw new Error(`Host with id [${id}] was not found`)
                 }
             } catch (err) {
                 reject(err);
@@ -66,9 +82,62 @@ class MemoryHostRepository implements HostRepository {
             }
 
         });
+
     }
 
-    public create (host: Host): Promise<HostSaveResult> {
+    public create (host: Host, id?: string): Promise<HostSaveResult> {
+
+        const newHost : Host = {
+            ...host,
+            id: id
+        };
+
+        if (!newHost?.name) {
+            LOG.debug('create: host = ', host);
+            throw new TypeError('The host must have a name');
+        }
+
+        return new Promise((resolve, reject) => {
+            try {
+
+                let status : SaveStatus = SaveStatus.NotChanged;
+
+                if (!newHost?.id) {
+                    // FIXME: Handle case if the generated UUID already exists in the database
+                    newHost.id = uuidV4();
+                }
+
+                if (has(this._cache, newHost.id)) {
+
+                    if (MemoryHostRepository.areEqual(newHost, this._cache[newHost.id])) {
+                        status = SaveStatus.NotChanged;
+                    } else {
+                        this._cache[newHost.id] = newHost;
+                        status = SaveStatus.Updated;
+                    }
+
+                } else {
+
+                    this._cache[newHost.id] = newHost;
+                    status = SaveStatus.Created;
+
+                }
+
+                resolve({
+                    host: {
+                        ...newHost
+                    },
+                    status: status
+                });
+
+            } catch (err) {
+                reject(err);
+            }
+        });
+
+    }
+
+    public createOrUpdate (host: Host, id: string): Promise<HostSaveResult> {
 
         const newHost : Host = {
             ...host,
@@ -83,30 +152,43 @@ class MemoryHostRepository implements HostRepository {
         return new Promise((resolve, reject) => {
             try {
 
-                newHost.id = uuidV4();
+                let status : SaveStatus = SaveStatus.NotChanged;
 
-                if (has(this._cache, newHost.id)) {
-                    // FIXME: Handle correctly
-                    throw new TypeError('The host resource already exists: ' + newHost.id);
+                if (!newHost?.id) {
+                    // FIXME: Handle case if the generated UUID already exists in the database
+                    newHost.id = uuidV4();
                 }
 
-                this._cache[newHost.id] = newHost;
+                if (has(this._cache, newHost.id)) {
+
+                    if (MemoryHostRepository.areEqual(newHost, this._cache[newHost.id])) {
+                        status = SaveStatus.NotChanged;
+                    } else {
+                        this._cache[newHost.id] = newHost;
+                        status = SaveStatus.Updated;
+                    }
+
+                } else {
+
+                    this._cache[newHost.id] = newHost;
+                    status = SaveStatus.Created;
+
+                }
 
                 resolve({
                     host: {
                         ...newHost
                     },
-                    changed: true
+                    status: status
                 });
 
             } catch (err) {
                 reject(err);
             }
-
         });
     }
 
-    public update (id: string, host: Host): Promise<HostSaveResult> {
+    public save (host: Host): Promise<HostSaveResult> {
 
         let newHost : Host = {
             ...host
@@ -116,19 +198,23 @@ class MemoryHostRepository implements HostRepository {
 
             try {
 
+                const id = newHost?.id;
+
+                if (!id) throw new TypeError('Id not defined');
+
                 const current : Host | undefined = has(this._cache, id) ? this._cache[id] : undefined;
 
                 if (current) {
 
-                    if ( current.name === host.name && isEqual(current.data, host.data) ) {
+                    if ( MemoryHostRepository.areEqual(current, newHost) ) {
 
-                        resolve({ host: {...current}, changed: false });
+                        resolve({ host: {...current}, status: SaveStatus.NotChanged });
 
                     } else {
 
                         newHost = this._cache[id] = {...current, ...newHost};
 
-                        resolve({ host: {...newHost}, changed: true });
+                        resolve({ host: {...newHost}, status: SaveStatus.Updated });
 
                     }
 
@@ -142,9 +228,10 @@ class MemoryHostRepository implements HostRepository {
             }
 
         });
+
     }
 
-    public delete(id: string): Promise<boolean> {
+    public delete (id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
 
             try {
@@ -161,6 +248,10 @@ class MemoryHostRepository implements HostRepository {
             }
 
         });
+    }
+
+    public static areEqual (current: Host, host: Host) {
+        return !current.deleted && current.name === host.name && isEqual(current.data, host.data)
     }
 
 }
