@@ -6,8 +6,7 @@ export interface HostRepository {
     findByName(id: string, allowDeleted?: true): Promise<Host | undefined>
     getPage(page: number, size: number): Promise<HostPage>
     create(host: Host, id?: string): Promise<HostSaveResult>
-    createOrUpdate(host: Host, id: string): Promise<HostSaveResult>
-    save(host: Host): Promise<HostSaveResult>
+    update(host: Host, id: string): Promise<HostSaveResult>
     delete(id: string): Promise<boolean>
 }
 

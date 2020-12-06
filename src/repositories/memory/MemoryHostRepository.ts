@@ -142,6 +142,10 @@ class MemoryHostRepository implements HostRepository {
 
     }
 
+    public update(host: Host, id: string): Promise<HostSaveResult> {
+        throw new TypeError('Not supported')
+    }
+
     public createOrUpdate(host: Host, id: string): Promise<HostSaveResult> {
 
         const newHost: Host = {

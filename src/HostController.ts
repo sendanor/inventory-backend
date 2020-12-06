@@ -122,14 +122,20 @@ export class HostController {
 
         } else if (method === Method.PUT && id) {
             this.getValidRequestBody(req)
-                .then(host => this.repository.createOrUpdate(host, id)
+                .then(host => this.repository.findById(id, true)
+                    .then(current => current ?
+                        this.repository.update(host, current.id!) :
+                        this.repository.create(host, id))
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
 
         } else if (method === Method.PATCH && url === '/hosts') {
             this.getValidRequestBody(req)
-                .then(host => this.repository.save(host)
+                .then(host => this.repository.findByName(host.name, true)
+                    .then(current => current ?
+                        this.repository.update(host, current.id!) :
+                        this.repository.create(host))
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))

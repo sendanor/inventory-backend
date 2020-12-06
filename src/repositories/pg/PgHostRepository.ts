@@ -49,19 +49,6 @@ class PgHostRepository implements HostRepository {
         })
     }
 
-    public getById(id: string, allowDeleted?: boolean): Promise<Host> {
-        return new Promise((resolve, reject) => {
-            this.pool.query(allowDeleted ? findByIdAllowDeleted : findById, [id])
-                .then(response => {
-                    if (response.rowCount === 1) {
-                        return resolve(response.rows[0])
-                    }
-                    throw new Error(`Host with id [${id}] was not found`)
-                })
-                .catch(err => reject(err))
-        })
-    }
-
     public getPage(page: number, size: number): Promise<HostPage> {
         const hostPromise = new Promise((resolve, reject) => {
             this.pool.query(getPage, [(page - 1) * size, size])
@@ -93,46 +80,20 @@ class PgHostRepository implements HostRepository {
         })
     }
 
-    public createOrUpdate(host: Host, id: string): Promise<HostSaveResult> {
+    public update(host: Host, id: string): Promise<HostSaveResult> {
         const newHost = { ...host }
         return new Promise((resolve, reject) => {
-            this.findById(id, true)
+            this.getById(id)
                 .then(current => {
-                    if (!current) {
-                        return this.create(newHost, id).then(result => resolve(result))
-                    } else {
-                        if (HostUtils.areEqualHosts(current, newHost)) {
-                            return resolve({ host: current, status: SaveStatus.NotChanged })
-                        }
-                        const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
-                        this.update(current, newHost)
-                            .then(response => resolve({ host: response.rows[0], status }))
+                    if (HostUtils.areEqualHosts(current, newHost)) {
+                        return resolve({ host: current, status: SaveStatus.NotChanged })
                     }
+                    const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
+                    const modifiedTime = current.deleted ? null : new Date()
+                    return this.pool.query(update, [current.id, newHost.name, newHost.data, modifiedTime])
+                        .then(response => resolve({ host: response.rows[0], status }))
                 })
                 .catch(err => this.handleSaveError(err, resolve, reject))
-        })
-    }
-
-    public save(host: Host): Promise<HostSaveResult> {
-        const newHost = { ...host }
-        return new Promise<HostSaveResult>((resolve, reject) => {
-            this.create(newHost)
-                .then(result => {
-                    if (result.status !== SaveStatus.NameConflict) {
-                        return resolve(result)
-                    }
-                    this.findByName(newHost.name).then(current => {
-                        // FIXME: Handle undefined case
-                        if (current === undefined) throw new TypeError('current was undefined');
-                        if (HostUtils.areEqualHosts(current, newHost)) {
-                            return resolve({ host: current, status: SaveStatus.NotChanged })
-                        }
-                        const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
-                        this.update(current, newHost)
-                            .then(response => resolve({ host: response.rows[0], status }))
-                            .catch(err => this.handleSaveError(err, resolve, reject))
-                    })
-                })
         })
     }
 
@@ -144,9 +105,17 @@ class PgHostRepository implements HostRepository {
         })
     }
 
-    private update(current: Host, host: Host) {
-        const modifiedTime = current.deleted ? null : new Date()
-        return this.pool.query(update, [current.id, host.name, host.data, modifiedTime])
+    private getById(id: string): Promise<Host> {
+        return new Promise((resolve, reject) => {
+            this.pool.query(findByIdAllowDeleted, [id])
+                .then(response => {
+                    if (response.rowCount === 1) {
+                        return resolve(response.rows[0])
+                    }
+                    throw new Error(`Host with id [${id}] was not found`)
+                })
+                .catch(err => reject(err))
+        })
     }
 
     private handleSaveError(err: Error, resolve: (_: HostSaveResult) => void, reject: (_: Error) => void) {
@@ -156,7 +125,6 @@ class PgHostRepository implements HostRepository {
             reject(err)
         }
     }
-
 }
 
 export function createRepository(): HostRepository {
