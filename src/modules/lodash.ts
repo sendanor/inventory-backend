@@ -16,6 +16,7 @@ import every      from "lodash/every";
 import startsWith from "lodash/startsWith";
 import keys       from "lodash/keys";
 import indexOf    from "lodash/indexOf";
+import slice      from "lodash/slice";
 
 export {
     has,
@@ -35,5 +36,6 @@ export {
     every,
     startsWith,
     keys,
+    slice,
     indexOf
 };

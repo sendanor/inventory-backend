@@ -1,9 +1,12 @@
 import InventoryLogLevel from "../types/InventoryLogLevel";
 import LogUtils from "../services/LogUtils";
+import InventoryRepository, {parseInventoryRepository} from "../types/InventoryRepository";
 
 export const IB_LISTEN_PORT = process?.env?.IB_LISTEN_PORT ? parseInt(process?.env?.IB_LISTEN_PORT, 10) : 3000;
 
 export const IB_LISTEN_HOSTNAME = process?.env?.IB_LISTEN_HOSTNAME ?? 'localhost';
+
+export const IB_REPOSITORY : InventoryRepository = process?.env?.IB_REPOSITORY ? parseInventoryRepository(process?.env?.IB_REPOSITORY) : InventoryRepository.PG;
 
 export const PG_HOST : string = process?.env?.PG_HOST ?? 'localhost';
 
