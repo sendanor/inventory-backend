@@ -1,4 +1,4 @@
-import { HostRepository } from '../../HostRepository'
+import { HostRepository } from '../../types/HostRepository'
 import Host, {HostPage, HostSaveResult, SaveStatus} from '../../types/Host'
 import {isEqual, has, keys, map, slice} from "../../modules/lodash";
 import LogService from "../../services/LogService";

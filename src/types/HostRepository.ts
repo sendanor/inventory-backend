@@ -1,4 +1,4 @@
-import Host, { HostPage, HostSaveResult } from './types/Host';
+import Host, { HostPage, HostSaveResult } from './Host';
 
 export interface HostRepository {
     initialize(): void
@@ -10,3 +10,5 @@ export interface HostRepository {
     save(host: Host): Promise<HostSaveResult>
     delete(id: string): Promise<boolean>
 }
+
+export default HostRepository;

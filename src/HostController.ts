@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "http"
-import { HostRepository } from "./HostRepository"
+import { HostRepository } from "./types/HostRepository"
 import Host, { HostPage, HostSaveResult, SaveStatus } from './types/Host'
 import validate from './DefaultHostValidator'
 import LogService from "./services/LogService";

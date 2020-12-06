@@ -1,6 +1,6 @@
 import { Pool } from "pg"
 import { DatabaseError } from 'pg-protocol'
-import { HostRepository } from '../../HostRepository'
+import { HostRepository } from '../../types/HostRepository'
 import {isEqual} from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import Host, { HostPage, HostSaveResult, SaveStatus } from '../../types/Host'
