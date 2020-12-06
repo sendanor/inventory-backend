@@ -10,3 +10,5 @@ export interface HostRepository {
     save(host: Host): Promise<HostSaveResult>
     delete(id: string): Promise<boolean>
 }
+
+export default HostRepository;

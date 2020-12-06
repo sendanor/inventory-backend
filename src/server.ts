@@ -8,7 +8,7 @@ import HostController from "./HostController"
 import HTTP = require('http')
 import {IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY} from "./constants/env";
 import LogService from "./services/LogService";
-import {HostRepository} from "./HostRepository";
+import HostRepository from "./types/HostRepository";
 import InventoryRepository from "./types/InventoryRepository";
 
 const LOG = LogService.createLogger('server');
