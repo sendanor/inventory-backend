@@ -2,9 +2,11 @@ import Host, { HostPage, HostSaveResult } from './Host';
 
 export interface HostRepository {
     initialize(): void
-    get(id: string): Promise<Host|undefined>
+    findById(id: string, allowDeleted?: true): Promise<Host | undefined>
+    getById(id: string, allowDeleted?: true): Promise<Host>
     getPage(page: number, size: number): Promise<HostPage>
-    create(host: Host): Promise<HostSaveResult>
-    update(id: string, host: Host): Promise<HostSaveResult>
+    create(host: Host, id?: string): Promise<HostSaveResult>
+    createOrUupdate(host: Host, id: string): Promise<HostSaveResult>
+    save(host: Host): Promise<HostSaveResult>
     delete(id: string): Promise<boolean>
 }

@@ -1,19 +1,22 @@
 import { Pool } from "pg"
 import { DatabaseError } from 'pg-protocol'
 import { HostRepository } from './HostRepository'
-import Host, { HostPage, HostSaveResult } from './Host'
-import {PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER} from "./constants/env";
 import {isEqual} from "./modules/lodash";
 import LogService from "./services/LogService";
+import Host, { HostPage, HostSaveResult, SaveStatus } from './Host'
+import {PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER} from "./constants/env";
 
 const LOG = LogService.createLogger('PgHostRepository');
 
-const get = 'SELECT * FROM hosts WHERE id = $1 AND NOT deleted'
-const getPage = 'SELECT id, name, data FROM hosts WHERE NOT deleted ORDER BY name OFFSET $1 LIMIT $2'
+const findById = 'SELECT * FROM hosts WHERE id = $1 AND NOT deleted'
+const findByIdAllowDeleted = 'SELECT * FROM hosts WHERE id = $1'
+const getPage = 'SELECT * FROM hosts WHERE NOT deleted ORDER BY name OFFSET $1 LIMIT $2'
+const findByName = 'SELECT * FROM hosts WHERE name = $1'
 const totalCount = 'SELECT COUNT(*) FROM hosts WHERE NOT deleted'
-const insert = 'INSERT INTO hosts(name, data) VALUES($1, $2) RETURNING *'
-const update = 'UPDATE hosts SET name = $2, data = $3 WHERE id = $1 AND NOT deleted RETURNING *'
-const remove = 'DELETE FROM hosts WHERE id = $1 AND NOT deleted RETURNING *'
+const insert = 'INSERT INTO hosts(name, data, createdTime) VALUES($1, $2, $3) RETURNING *'
+const insertWithId = 'INSERT INTO hosts(id, name, data, createdTime) VALUES($1, $2, $3, $4) RETURNING *'
+const update = 'UPDATE hosts SET name = $2, data = $3, modifiedTime = $4, deleted = false, deletedTime = null WHERE id = $1 RETURNING *'
+const remove = 'UPDATE hosts SET deleted = true, deletedTime = $2 WHERE id = $1 AND NOT deleted RETURNING *'
 const uniqueViolationErrorCode = '23505'
 
 class PgHostRepository implements HostRepository {
@@ -29,10 +32,23 @@ class PgHostRepository implements HostRepository {
         });
     }
 
-    public get(id: string): Promise<Host | undefined> {
+    public findById(id: string, allowDeleted?: boolean): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
-            this.pool.query(get, [id])
+            this.pool.query(allowDeleted ? findByIdAllowDeleted : findById, [id])
                 .then(response => resolve(response.rows[0]))
+                .catch(err => reject(err))
+        })
+    }
+
+    public getById(id: string, allowDeleted?: boolean): Promise<Host> {
+        return new Promise((resolve, reject) => {
+            this.pool.query(allowDeleted ? findByIdAllowDeleted : findById, [id])
+                .then(response => {
+                    if (response.rowCount === 1) {
+                        return resolve(response.rows[0])
+                    }
+                    throw new Error(`Host with id [${id}] was not found`)
+                })
                 .catch(err => reject(err))
         })
     }
@@ -57,50 +73,93 @@ class PgHostRepository implements HostRepository {
             })
     }
 
-    public create(host: Host): Promise<HostSaveResult> {
+    public create(host: Host, id?: string): Promise<HostSaveResult> {
+        const newHost = { ...host }
         return new Promise((resolve, reject) => {
-            this.pool.query(insert, [host.name, host.data])
-                .then(response => resolve({ host: response.rows[0], changed: true }))
+            const query = id ? insertWithId : insert
+            const params = id ? [id, newHost.name, newHost.data, new Date()] : [newHost.name, newHost.data, new Date()]
+            this.pool.query(query, params)
+                .then(response => resolve({ host: response.rows[0], status: SaveStatus.Created }))
                 .catch(err => this.handleSaveError(err, resolve, reject))
         })
     }
 
-    public update(id: string, host: Host): Promise<HostSaveResult> {
+    public createOrUupdate(host: Host, id: string): Promise<HostSaveResult> {
+        const newHost = { ...host }
         return new Promise((resolve, reject) => {
-            this.get(id).then(current => {
-                if (current) {
-
-                    if (current.name === host.name && isEqual(current.data, host.data)) {
-                        return resolve({ host: current, changed: false })
+            this.findById(id, true)
+                .then(current => {
+                    if (!current) {
+                        return this.create(newHost, id).then(result => resolve(result))
+                    } else {
+                        if (this.areEqual(current, newHost)) {
+                            return resolve({ host: current, status: SaveStatus.NotChanged })
+                        }
+                        const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
+                        this.update(current, newHost)
+                            .then(response => resolve({ host: response.rows[0], status }))
                     }
-
-                    this.pool.query(update, [id, host.name, host.data])
-                        .then(response => resolve({ host: response.rows[0], changed: true }))
-                        .catch(err => this.handleSaveError(err, resolve, reject))
-
-                } else {
-                    // FIXME: This should be handled correctly. 404 maybe?
-                    LOG.warn('No resource found for ID: ', id);
-                }
-            })
+                })
+                .catch(err => this.handleSaveError(err, resolve, reject))
         })
     }
 
-    handleSaveError(err: any, resolve: any, reject: any) {
+    public save(host: Host): Promise<HostSaveResult> {
+        const newHost = { ...host }
+        return new Promise<HostSaveResult>((resolve, reject) => {
+            this.create(newHost)
+                .then(result => {
+                    if (result.status !== SaveStatus.NameConflict) {
+                        return resolve(result)
+                    }
+                    this.findByName(newHost.name).then(current => {
+                        // FIXME: Handle undefined case
+                        if (current === undefined) throw new TypeError('current was undefined');
+                        if (this.areEqual(current, newHost)) {
+                            return resolve({ host: current, status: SaveStatus.NotChanged })
+                        }
+                        const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
+                        this.update(current, newHost)
+                            .then(response => resolve({ host: response.rows[0], status }))
+                            .catch(err => this.handleSaveError(err, resolve, reject))
+                    })
+                })
+        })
+    }
+
+    public delete(id: string): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            this.pool.query(remove, [id, new Date()])
+                .then(response => resolve(response.rowCount === 1))
+                .catch(err => reject(err))
+        })
+    }
+
+    private findByName(name: string): Promise<Host | undefined> {
+        return new Promise((resolve, reject) => {
+            this.pool.query(findByName, [name])
+                .then(response => resolve(response.rows[0]))
+                .catch(err => reject(err))
+        })
+    }
+
+    private areEqual(current: Host, host: Host) {
+        return !current.deleted && current.name === host.name && isEqual(current.data, host.data)
+    }
+
+    private update(current: Host, host: Host) {
+        const modifiedTime = current.deleted ? null : new Date()
+        return this.pool.query(update, [current.id, host.name, host.data, modifiedTime])
+    }
+
+    private handleSaveError(err: Error, resolve: (_: HostSaveResult) => void, reject: (_: Error) => void) {
         if (err instanceof DatabaseError && err.code === uniqueViolationErrorCode) {
-            resolve({ nameConflict: true })
+            resolve({ status: SaveStatus.NameConflict })
         } else {
             reject(err)
         }
     }
 
-    public delete(id: string): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            this.pool.query(remove, [id])
-                .then(response => resolve(response.rowCount === 1))
-                .catch(err => reject(err))
-        })
-    }
 }
 
 export function createRepository(): HostRepository {
