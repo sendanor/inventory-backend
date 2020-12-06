@@ -1,7 +1,7 @@
 import { ProcessUtils } from './services/ProcessUtils'
 ProcessUtils.initEnvFromDefaultFiles();
 
-import { createRepository as createPgRepository } from "./PgHostRepository"
+import { createRepository as createPgRepository } from "./repositories/pg/PgHostRepository"
 import { createRepository as createMemoryRepository } from "./repositories/memory/MemoryHostRepository"
 import HostController from "./HostController"
 
