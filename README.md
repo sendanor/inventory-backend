@@ -57,7 +57,7 @@ Commercial support up to 10 years is available from [Sendanor](https://sendanor.
 ```
 ## Get host
 
-**URL** : `/hosts/:id`
+**URL** : `/hosts/:id` or `/hosts/:name`
 
 **Method** : `GET`
 
