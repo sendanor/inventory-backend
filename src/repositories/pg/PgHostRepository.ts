@@ -3,15 +3,16 @@ import { DatabaseError } from 'pg-protocol'
 import { HostRepository } from '../../types/HostRepository'
 import LogService from "../../services/LogService";
 import Host, { HostPage, HostSaveResult, SaveStatus } from '../../types/Host'
-import {PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER} from "../../constants/env";
+import { PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER } from "../../constants/env";
 import HostUtils from "../../services/HostUtils";
 
 const LOG = LogService.createLogger('PgHostRepository');
 
 const findById = 'SELECT * FROM hosts WHERE id = $1 AND NOT deleted'
 const findByIdAllowDeleted = 'SELECT * FROM hosts WHERE id = $1'
+const findByName = 'SELECT * FROM hosts WHERE name = $1 AND NOT deleted'
+const findByNameAllowDeleted = 'SELECT * FROM hosts WHERE name = $1'
 const getPage = 'SELECT * FROM hosts WHERE NOT deleted ORDER BY name OFFSET $1 LIMIT $2'
-const findByName = 'SELECT * FROM hosts WHERE name = $1'
 const totalCount = 'SELECT COUNT(*) FROM hosts WHERE NOT deleted'
 const insert = 'INSERT INTO hosts(name, data, createdTime) VALUES($1, $2, $3) RETURNING *'
 const insertWithId = 'INSERT INTO hosts(id, name, data, createdTime) VALUES($1, $2, $3, $4) RETURNING *'
@@ -35,6 +36,14 @@ class PgHostRepository implements HostRepository {
     public findById(id: string, allowDeleted?: boolean): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
             this.pool.query(allowDeleted ? findByIdAllowDeleted : findById, [id])
+                .then(response => resolve(response.rows[0]))
+                .catch(err => reject(err))
+        })
+    }
+
+    public findByName(name: string, allowDeleted?: boolean): Promise<Host | undefined> {
+        return new Promise((resolve, reject) => {
+            this.pool.query(allowDeleted ? findByNameAllowDeleted : findByName, [name])
                 .then(response => resolve(response.rows[0]))
                 .catch(err => reject(err))
         })
@@ -131,14 +140,6 @@ class PgHostRepository implements HostRepository {
         return new Promise((resolve, reject) => {
             this.pool.query(remove, [id, new Date()])
                 .then(response => resolve(response.rowCount === 1))
-                .catch(err => reject(err))
-        })
-    }
-
-    private findByName(name: string): Promise<Host | undefined> {
-        return new Promise((resolve, reject) => {
-            this.pool.query(findByName, [name])
-                .then(response => resolve(response.rows[0]))
                 .catch(err => reject(err))
         })
     }

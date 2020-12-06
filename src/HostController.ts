@@ -27,6 +27,7 @@ export interface Request {
     method?: Method,
     url: string,
     id?: string,
+    name?: string,
     page?: number,
     size?: number
 }
@@ -48,17 +49,20 @@ export class HostController {
     private parseRequest(req: IncomingMessage): Promise<Request> {
         return new Promise((resolve, _) => {
             const idPattern: RegExp = /\/hosts\/([\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12})/
+            const namePattern: RegExp = /\/hosts\/(.+)/
             const sizePattern: RegExp = /\/hosts.+size=(.+)/
             const pagePattern: RegExp = /\/hosts.+page=(.+)/
             const url = req.url!
             const idMatch = url.match(idPattern)
-            const pageMatch : Array<string> | null = url.match(pagePattern)
-            const sizeMatch : Array<string> | null = url.match(sizePattern)
+            const nameMatch = !idMatch && url.match(namePattern)
+            const pageMatch: Array<string> | null = url.match(pagePattern)
+            const sizeMatch: Array<string> | null = url.match(sizePattern)
             const id = idMatch ? idMatch[1] : undefined
-            const page : number | undefined = this.parsePositiveIntMatch(pageMatch)
-            const size : number | undefined = this.parsePositiveIntMatch(sizeMatch)
+            const name = nameMatch ? decodeURI(nameMatch[1]) : undefined
+            const page: number | undefined = this.parsePositiveIntMatch(pageMatch)
+            const size: number | undefined = this.parsePositiveIntMatch(sizeMatch)
             switch (req.method!.toLowerCase()) {
-                case 'get': resolve({ method: Method.GET, url, id, page, size }); return;
+                case 'get': resolve({ method: Method.GET, url, id, name, page, size }); return;
                 case 'post': resolve({ method: Method.POST, url }); return;
                 case 'put': resolve({ method: Method.PUT, url, id }); return;
                 case 'delete': resolve({ method: Method.DELETE, url, id }); return;
@@ -68,7 +72,7 @@ export class HostController {
         })
     }
 
-    private parsePositiveIntMatch (match : Array<string> | null) : number | undefined {
+    private parsePositiveIntMatch(match: Array<string> | null): number | undefined {
         if (match && parseInt(match[1], 10) > 0) {
             return parseInt(match[1], 10)
         }
@@ -76,7 +80,7 @@ export class HostController {
     }
 
     public processRequest(req: IncomingMessage, res: ServerResponse, request: Request) {
-        const { method, url, id, page, size } = request
+        const { method, url, id, name, page, size } = request
 
         if (method === Method.GET && id) {
             this.repository.findById(id)
@@ -86,6 +90,16 @@ export class HostController {
                     host ? this.sanitizeHost(host) : null,
                     false))
                 .catch(err => this.writeInternalError(res, err))
+
+        } else if (method === Method.GET && name) {
+            this.repository.findByName(name)
+                .then(host => this.writeResponse(
+                    res,
+                    host ? Status.OK : Status.NotFound,
+                    host ? this.sanitizeHost(host) : null,
+                    false))
+                .catch(err => this.writeInternalError(res, err))
+
 
         } else if (method === Method.GET && page && size) {
             this.repository.getPage(page, size)
