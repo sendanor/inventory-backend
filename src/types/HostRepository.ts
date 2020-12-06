@@ -4,10 +4,20 @@ import Host, { HostPage, HostSaveResult } from './Host';
  * Persistence implementation for hosts. All functions in this interface (except initialize()) return a Promise.
  */
 export interface HostRepository {
+
     /**
-     * Initializes the repository. This method is called right after instantiation before any other function calls.
+     * Initializes the repository. It's optional.
+     *
+     * This method is called right after instantiation before any other function calls.
      */
-    initialize(): void
+    initialize?(): void
+
+    /**
+     * Destroy the repository. It's optional.
+     *
+     * This method is called right before the controller is going to be destroyed.
+     */
+    destroy?(): void
 
     /**
      * Searches for a host by an id
@@ -47,6 +57,7 @@ export interface HostRepository {
 
     /**
      * Updates an existing host
+     *
      * @param host Host data
      * @param id Id of the host to be updated
      * @returns HostSaveResult indicating result of save operation
