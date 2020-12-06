@@ -21,11 +21,11 @@ export interface HostRepository {
     /**
      * Searches for a host by a name
      *
-     * @param id Name of the host to search for
+     * @param name Name of the host to search for
      * @param allowDeleted true, if hosts marked as 'deleted' should be searched also
      * @returns Host, if one was found, undefined otherwise
      */
-    findByName(id: string, allowDeleted?: true): Promise<Host | undefined>
+    findByName(name: string, allowDeleted?: true): Promise<Host | undefined>
 
     /**
      * Gets one page of hosts
