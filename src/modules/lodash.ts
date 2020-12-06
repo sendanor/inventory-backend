@@ -9,6 +9,8 @@ import isArray    from "lodash/isArray";
 import isObject   from "lodash/isObject";
 import forEach    from "lodash/forEach";
 import map        from "lodash/map";
+import find       from "lodash/find";
+import remove     from "lodash/remove";
 import filter     from "lodash/filter";
 import reduce     from "lodash/reduce";
 import some       from "lodash/some";
@@ -30,6 +32,7 @@ export {
     isObject,
     forEach,
     map,
+    find,
     filter,
     reduce,
     some,
@@ -37,5 +40,6 @@ export {
     startsWith,
     keys,
     slice,
+    remove,
     indexOf
 };

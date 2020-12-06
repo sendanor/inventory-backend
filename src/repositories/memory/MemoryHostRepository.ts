@@ -1,30 +1,95 @@
 import { HostRepository } from '../../types/HostRepository'
 import Host, { HostPage, HostSaveResult, SaveStatus } from '../../types/Host'
-import { isEqual, has, keys, map, slice } from "../../modules/lodash";
+import {has, keys, map, slice, filter, find, remove} from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import { v4 as uuidV4 } from "uuid";
 import HostUtils from "../../services/HostUtils";
 
 const LOG = LogService.createLogger('MemoryHostRepository');
 
-class MemoryHostRepository implements HostRepository {
+/**
+ * When generating a new ID, loop maximum this times until throwing an error
+ */
+const MAXIMUM_ID_GENERATION_LOOP_TIMES = 100;
 
-    private _cache: Record<string, Host>;
+/**
+ * Interval in microseconds when to delete soft deleted content
+ */
+const HARD_DELETE_INTERVAL = 300*1000;
 
-    public constructor() {
-        this._cache = {};
+interface CacheRecord {
+
+    deleted: boolean;
+
+    host: Host;
+
+}
+
+interface DeleteIntervalCallback {
+    () : void
+}
+
+export class MemoryHostRepository implements HostRepository {
+
+    private _cache    : Record<string, CacheRecord>;
+
+    /**
+     * Interval when to delete deleted records
+     *
+     * @private
+     */
+    private _intervalListener : any | undefined;
+
+    private readonly _intervalCallback : DeleteIntervalCallback;
+
+    public constructor () {
+
+        this._cache    = {};
+        this._intervalListener = undefined;
+        this._intervalCallback = this.onInterval.bind(this);
+
     }
 
-    public initialize(): void {
-        this._cache = {};
+    public onInterval () {
+
+        this._deleteSoftDeletedItems();
+
     }
 
-    public findById(id: string, allowDeleted?: true): Promise<Host | undefined> {
+    public initialize (): void {
+
+        this._cache = {};
+
+        this._intervalListener = setInterval(this._intervalCallback, HARD_DELETE_INTERVAL);
+
+    }
+
+    public destroy () : void {
+
+        if (this._intervalListener !== undefined) {
+            clearInterval(this._intervalListener);
+            this._intervalListener = undefined;
+        }
+
+    }
+
+    public findById (id: string, allowDeleted?: true): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
 
             try {
                 if (has(this._cache, id)) {
-                    resolve({ ...this._cache[id] });
+
+                    const record : CacheRecord = this._cache[id];
+                    const host   : Host        = record.host;
+
+                    if (allowDeleted === true) {
+                        resolve({ ...host });
+                    } else if (!record.deleted) {
+                        resolve({ ...host });
+                    } else {
+                        resolve(undefined);
+                    }
+
                 } else {
                     resolve(undefined);
                 }
@@ -35,18 +100,31 @@ class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public findByName(name: string, allowDeleted?: true): Promise<Host | undefined> {
-        throw new TypeError('Not supported')
-    }
-
-    public getById(id: string, allowDeleted?: true): Promise<Host> {
+    public findByName (name: string, allowDeleted?: true): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
 
             try {
-                if (has(this._cache, id)) {
-                    resolve({ ...this._cache[id] });
+
+                // FIXME: This could use another cache for names, except performance probably isn't the problem since memory host repository is
+                //        only meant for development.
+
+                const allRecords : Array<CacheRecord>      = map(keys(this._cache), (key: string) : CacheRecord => this._cache[key]);
+                const record     : CacheRecord | undefined = find(allRecords, (record: CacheRecord) : boolean => record.host.name === name);
+
+                if (record !== undefined) {
+
+                    const host : Host  = record.host;
+
+                    if (allowDeleted === true) {
+                        resolve({ ...host });
+                    } else if (!record.deleted) {
+                        resolve({ ...host });
+                    } else {
+                        resolve(undefined);
+                    }
+
                 } else {
-                    throw new Error(`Host with id [${id}] was not found`)
+                    resolve(undefined);
                 }
             } catch (err) {
                 reject(err);
@@ -55,24 +133,27 @@ class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public getPage(page: number, size: number): Promise<HostPage> {
+    public getPage (page: number, size: number): Promise<HostPage> {
 
         return new Promise((resolve, reject) => {
             try {
 
                 const allKeys: Array<string> = keys(this._cache);
 
-                const allHosts = map(allKeys, (key: string): Host => this._cache[key]);
+                const allActiveRecords : Array<CacheRecord> = filter(
+                    map(allKeys, (key: string): CacheRecord => this._cache[key]),
+                    (record: CacheRecord) => !record.deleted
+                );
 
                 // FIXME: handle input limits correctly
 
-                const hosts = slice(allHosts, (page - 1) * size, size).map(
-                    (host: Host): Host => {
-                        return { ...host };
+                const hosts = slice(allActiveRecords, (page - 1) * size, size).map(
+                    (record: CacheRecord): Host => {
+                        return { ...record.host };
                     }
                 );
 
-                const totalCount = allHosts.length;
+                const totalCount = allActiveRecords.length;
 
                 const pageCount = Math.ceil(totalCount / size);
 
@@ -85,53 +166,96 @@ class MemoryHostRepository implements HostRepository {
             } catch (err) {
                 reject(err);
             }
-
         });
 
     }
 
-    public create(host: Host, id?: string): Promise<HostSaveResult> {
+    public create (host: Host, id?: string): Promise<HostSaveResult> {
+
+        const newHost: Host = {...host};
+
+        return new Promise((resolve, reject) => {
+            try {
+
+                let newId : string = id ?? this._createId();
+
+                let status: SaveStatus = SaveStatus.NotChanged;
+
+                if (has(this._cache, newId)) {
+
+                    const record : CacheRecord = this._cache[newId];
+                    const host   : Host        = record.host;
+
+                    if (HostUtils.areEqualHostsIncludingId(newHost, host)) {
+                        status = SaveStatus.NotChanged;
+                    } else {
+                        this._cache[newId] = {
+                            host: newHost,
+                            deleted: false
+                        };
+                        status = SaveStatus.Updated;
+                    }
+
+                } else {
+
+                    this._cache[newId] = {
+                        host: newHost,
+                        deleted: false
+                    };
+                    status = SaveStatus.Created;
+
+                }
+
+                resolve({
+                    host: {
+                        ...newHost
+                    },
+                    status: status
+                });
+
+            } catch (err) {
+                reject(err);
+            }
+        });
+
+    }
+
+    public update (host: Host, id: string): Promise<HostSaveResult> {
 
         const newHost: Host = {
             ...host,
             id: id
         };
 
-        if (!newHost?.name) {
-            LOG.debug('create: host = ', host);
-            throw new TypeError('The host must have a name');
-        }
-
         return new Promise((resolve, reject) => {
             try {
 
                 let status: SaveStatus = SaveStatus.NotChanged;
 
-                if (!newHost?.id) {
-                    // FIXME: Handle case if the generated UUID already exists in the database
-                    newHost.id = uuidV4();
-                }
+                if (has(this._cache, id)) {
 
-                if (has(this._cache, newHost.id)) {
+                    const record : CacheRecord = this._cache[id];
+                    const host   : Host        = record.host;
 
-                    if (HostUtils.areEqualHosts(newHost, this._cache[newHost.id])) {
+                    if (HostUtils.areEqualHostsIncludingId(newHost, host)) {
                         status = SaveStatus.NotChanged;
                     } else {
-                        this._cache[newHost.id!] = newHost;
+                        this._cache[id].host = newHost;
                         status = SaveStatus.Updated;
                     }
 
                 } else {
 
-                    this._cache[newHost.id!] = newHost;
+                    this._cache[newId] = {
+                        host: newHost,
+                        deleted: false
+                    };
                     status = SaveStatus.Created;
 
                 }
 
                 resolve({
-                    host: {
-                        ...newHost
-                    },
+                    host: {...newHost},
                     status: status
                 });
 
@@ -142,112 +266,19 @@ class MemoryHostRepository implements HostRepository {
 
     }
 
-    public update(host: Host, id: string): Promise<HostSaveResult> {
-        throw new TypeError('Not supported')
-    }
-
-    public createOrUpdate(host: Host, id: string): Promise<HostSaveResult> {
-
-        const newHost: Host = {
-            ...host,
-            id: undefined
-        };
-
-        if (!newHost?.name) {
-            LOG.debug('create: host = ', host);
-            throw new TypeError('The host must have a name');
-        }
-
-        return new Promise((resolve, reject) => {
-            try {
-
-                let status: SaveStatus = SaveStatus.NotChanged;
-
-                if (!newHost?.id) {
-                    // FIXME: Handle case if the generated UUID already exists in the database
-                    newHost.id = uuidV4();
-                }
-
-                if (has(this._cache, newHost.id)) {
-
-                    if (HostUtils.areEqualHosts(newHost, this._cache[newHost.id])) {
-                        status = SaveStatus.NotChanged;
-                    } else {
-                        this._cache[newHost.id!] = newHost;
-                        status = SaveStatus.Updated;
-                    }
-
-                } else {
-
-                    this._cache[newHost.id!] = newHost;
-                    status = SaveStatus.Created;
-
-                }
-
-                resolve({
-                    host: {
-                        ...newHost
-                    },
-                    status: status
-                });
-
-            } catch (err) {
-                reject(err);
-            }
-        });
-    }
-
-    public save(host: Host): Promise<HostSaveResult> {
-
-        let newHost: Host = {
-            ...host
-        };
-
-        return new Promise((resolve, reject) => {
-
-            try {
-
-                const id = newHost?.id;
-
-                if (!id) throw new TypeError('Id not defined');
-
-                const current: Host | undefined = has(this._cache, id) ? this._cache[id] : undefined;
-
-                if (current) {
-
-                    if (HostUtils.areEqualHosts(current, newHost)) {
-
-                        resolve({ host: { ...current }, status: SaveStatus.NotChanged });
-
-                    } else {
-
-                        newHost = this._cache[id] = { ...current, ...newHost };
-
-                        resolve({ host: { ...newHost }, status: SaveStatus.Updated });
-
-                    }
-
-                } else {
-                    // FIXME: This should be handled correctly. 404 maybe?
-                    LOG.warn('No resource found for ID: ', id);
-                }
-
-            } catch (err) {
-                reject(err);
-            }
-
-        });
-
-    }
-
-    public delete(id: string): Promise<boolean> {
+    public delete (id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
 
             try {
 
                 if (has(this._cache, id)) {
-                    delete this._cache[id];
+
+                    const record : CacheRecord = this._cache[id];
+
+                    record.deleted = true;
+
                     resolve(true);
+
                 } else {
                     resolve(false);
                 }
@@ -259,6 +290,36 @@ class MemoryHostRepository implements HostRepository {
         });
     }
 
+    protected _createId () : string {
+
+        let id;
+
+        // Generate a new id until the new ID doesn't exist in the database
+        let i = MAXIMUM_ID_GENERATION_LOOP_TIMES;
+        do {
+            id = uuidV4();
+            i -= 1;
+            if (i < 0) {
+                throw new Error('Failed to generate a unique ID');
+            }
+        } while ( !(id && !has(this._cache, id)) );
+
+        return id;
+
+    }
+
+    protected _deleteSoftDeletedItems () {
+
+        const items = remove(this._cache, (item : CacheRecord) : boolean => item.deleted);
+
+        if (items.length) {
+            LOG.info(`Deleted permanently ${items.length} items which were previously soft deleted`);
+        } else {
+            LOG.debug('There were no soft deleted items.');
+        }
+
+    }
+
 }
 
 export function createRepository(): HostRepository {
@@ -266,3 +327,5 @@ export function createRepository(): HostRepository {
     repository.initialize();
     return repository;
 }
+
+export default createRepository;

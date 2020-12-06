@@ -2,6 +2,7 @@
  * One page of hosts.
  */
 export interface HostPage {
+
     /**
      * Hosts of the page.
      */
@@ -16,9 +17,11 @@ export interface HostPage {
      * Total number of host pages when page size of the request is used.
      */
     pageCount: number
+
 }
 
 export default interface Host {
+
     id?: string
     name: string
     data: JSON
@@ -26,18 +29,45 @@ export default interface Host {
     createdTime?: string
     modifiedTime?: string
     deletedTime?: string
+
 }
 
 export enum SaveStatus {
-    Created, Updated, Deleted, NotChanged, NameConflict,
+
+    /**
+     * The host was created
+     */
+    Created,
+
+    /**
+     * The host record was updated
+     */
+    Updated,
+
+    /**
+     * The host record was deleted
+     */
+    Deleted,
+
+    /**
+     * The host record did not have any changes
+     */
+    NotChanged,
+
+    /**
+     *
+     */
+    NameConflict,
+
 }
 
 /**
  * Information about attempted host save.
  */
 export interface HostSaveResult {
+
     /**
-     * Host, if save was succesful. Otherwise undefined.
+     * Host, if save was successful. Otherwise `undefined`.
      */
     host?: Host
 
@@ -45,4 +75,5 @@ export interface HostSaveResult {
      * Save status.
      */
     status: SaveStatus
+
 }
