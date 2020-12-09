@@ -5,8 +5,10 @@ import HostUtils from "./HostUtils"
 
 interface HostPageDto {
     hosts: HostDto[]
-    totalCount: number
+    pageNumber: number
+    pageSize: number
     pageCount: number
+    totalCount: number
 }
 
 export enum SaveStatus {
@@ -48,9 +50,11 @@ export default class HostManager {
         return Promise.all([hostsPromise, countPromise])
             .then(values => {
                 const hosts = (values[0] as Host[]).map(h => Mapper.toDto(h))
+                const pageNumber = page
+                const pageSize = size
                 const totalCount = values[1] as number
                 const pageCount = Math.ceil(totalCount / size)
-                return { hosts, totalCount, pageCount }
+                return { hosts, pageNumber, pageSize, totalCount, pageCount }
             })
     }
 

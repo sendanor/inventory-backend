@@ -4,6 +4,7 @@ import HostManager, { HostSaveResult, SaveStatus } from "./services/HostManager"
 import Host, { HostDto } from './types/Host'
 import validate from './DefaultHostValidator'
 import LogService from "./services/LogService";
+import { IB_DEFAULT_PAGE_SIZE } from "./constants/env";
 
 const LOG = LogService.createLogger('HostController');
 
@@ -60,8 +61,8 @@ export class HostController {
             const sizeMatch: Array<string> | null = url.match(sizePattern)
             const id = idMatch ? idMatch[1] : undefined
             const name = nameMatch ? decodeURI(nameMatch[1]) : undefined
-            const page: number | undefined = this.parsePositiveIntMatch(pageMatch)
-            const size: number | undefined = this.parsePositiveIntMatch(sizeMatch)
+            const page: number | undefined = !id && !name ? this.parsePositiveIntMatch(pageMatch, 1) : undefined
+            const size: number | undefined = !id && !name ? this.parsePositiveIntMatch(sizeMatch, IB_DEFAULT_PAGE_SIZE) : undefined
             switch (req.method!.toLowerCase()) {
                 case 'get': resolve({ method: Method.GET, url, id, name, page, size }); return;
                 case 'post': resolve({ method: Method.POST, url }); return;
@@ -73,11 +74,11 @@ export class HostController {
         })
     }
 
-    private parsePositiveIntMatch(match: Array<string> | null): number | undefined {
+    private parsePositiveIntMatch(match: Array<string> | null, defaultValue: number): number | undefined {
         if (match && parseInt(match[1], 10) > 0) {
             return parseInt(match[1], 10)
         }
-        return undefined
+        return defaultValue
     }
 
     public processRequest(req: IncomingMessage, res: ServerResponse, request: Request) {
