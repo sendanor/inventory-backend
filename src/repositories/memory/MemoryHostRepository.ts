@@ -75,7 +75,6 @@ export class MemoryHostRepository implements HostRepository {
 
     public findById(id: string, allowDeleted?: true): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
-
             try {
                 if (has(this._cache, id)) {
 
@@ -83,7 +82,7 @@ export class MemoryHostRepository implements HostRepository {
                     const host: Host = record.host;
 
                     if (allowDeleted === true) {
-                        resolve({ ...host });
+                        resolve({ ...host, deleted: record.deleted });
                     } else if (!record.deleted) {
                         resolve({ ...host });
                     } else {
@@ -104,19 +103,14 @@ export class MemoryHostRepository implements HostRepository {
         return new Promise((resolve, reject) => {
 
             try {
-
-                // FIXME: This could use another cache for names, except performance probably isn't the problem since memory host repository is
-                //        only meant for development.
-
                 const allRecords: Array<CacheRecord> = map(keys(this._cache), (key: string): CacheRecord => this._cache[key]);
                 const record: CacheRecord | undefined = find(allRecords, (record: CacheRecord): boolean => record.host.name === name);
 
                 if (record !== undefined) {
-
                     const host: Host = record.host;
 
                     if (allowDeleted === true) {
-                        resolve({ ...host });
+                        resolve({ ...host, deleted: record.deleted });
                     } else if (!record.deleted) {
                         resolve({ ...host });
                     } else {
@@ -134,166 +128,103 @@ export class MemoryHostRepository implements HostRepository {
     }
 
     public getPage(page: number, size: number): Promise<Host[]> {
-        throw new Error('Not implemented')
-
-        // return new Promise((resolve, reject) => {
-        //     try {
-
-        //         const allKeys: Array<string> = keys(this._cache);
-
-        //         const allActiveRecords: Array<CacheRecord> = filter(
-        //             map(allKeys, (key: string): CacheRecord => this._cache[key]),
-        //             (record: CacheRecord) => !record.deleted
-        //         );
-
-        //         // FIXME: handle input limits correctly
-
-        //         const hosts = slice(allActiveRecords, (page - 1) * size, size).map(
-        //             (record: CacheRecord): Host => {
-        //                 return { ...record.host };
-        //             }
-        //         );
-
-        //         const totalCount = allActiveRecords.length;
-
-        //         const pageCount = Math.ceil(totalCount / size);
-
-        //         resolve({
-        //             hosts,
-        //             totalCount,
-        //             pageCount
-        //         });
-
-        //     } catch (err) {
-        //         reject(err);
-        //     }
-        // });
-
+        return new Promise((resolve, reject) => {
+            try {
+                const allKeys: Array<string> = keys(this._cache);
+                const allActiveRecords: Array<CacheRecord> = filter(
+                    map(allKeys, (key: string): CacheRecord => this._cache[key]),
+                    (record: CacheRecord) => !record.deleted
+                );
+                const hosts = slice(allActiveRecords, (page - 1) * size, page * size).map(
+                    (record: CacheRecord): Host => {
+                        return { ...record.host };
+                    }
+                );
+                resolve(hosts);
+            } catch (err) {
+                reject(err);
+            }
+        });
     }
 
     public getCount(): Promise<number> {
-        throw new Error('Not implemented')
+        return new Promise((resolve, reject) => {
+            try {
+                const allKeys: Array<string> = keys(this._cache);
+                const allActiveRecords: Array<CacheRecord> = filter(
+                    map(allKeys, (key: string): CacheRecord => this._cache[key]),
+                    (record: CacheRecord) => !record.deleted
+                );
+                resolve(allActiveRecords.length);
+            } catch (err) {
+                reject(err);
+            }
+        })
     }
 
     public create(host: Host): Promise<Host> {
-        throw new Error('Not implemented')
-
-        // const newHost: Host = { ...host };
-
-        // return new Promise((resolve, reject) => {
-        //     try {
-
-        //         let newId: string = id ?? this._createId();
-
-        //         let status: SaveStatus = SaveStatus.NotChanged;
-
-        //         if (has(this._cache, newId)) {
-
-        //             const record: CacheRecord = this._cache[newId];
-        //             const host: Host = record.host;
-
-        //             if (HostUtils.areEqualHostsIncludingId(newHost, host)) {
-        //                 status = SaveStatus.NotChanged;
-        //             } else {
-        //                 this._cache[newId] = {
-        //                     host: newHost,
-        //                     deleted: false
-        //                 };
-        //                 status = SaveStatus.Updated;
-        //             }
-
-        //         } else {
-
-        //             this._cache[newId] = {
-        //                 host: newHost,
-        //                 deleted: false
-        //             };
-        //             status = SaveStatus.Created;
-
-        //         }
-
-        //         resolve({
-        //             host: {
-        //                 ...newHost
-        //             },
-        //             status: status
-        //         });
-
-        //     } catch (err) {
-        //         reject(err);
-        //     }
-        // });
+        const newHost: Host = { ...host };
+        return new Promise((resolve, reject) => {
+            try {
+                const newId: string = host.id ?? this._createId();
+                if (has(this._cache, newId)) {
+                    throw new TypeError(`Id ${newId} already exists`)
+                }
+                newHost.id = newId
+                this._cache[newId] = {
+                    host: newHost,
+                    deleted: false
+                };
+                resolve({
+                    ...newHost
+                });
+            } catch (err) {
+                reject(err);
+            }
+        });
 
     }
 
     public update(host: Host): Promise<Host> {
-        throw new Error('Not implemented')
-
-        // const newHost: Host = {
-        //     ...host,
-        //     id: id
-        // };
-
-        // return new Promise((resolve, reject) => {
-        //     try {
-
-        //         let status: SaveStatus = SaveStatus.NotChanged;
-
-        //         if (has(this._cache, id)) {
-
-        //             const record: CacheRecord = this._cache[id];
-        //             const host: Host = record.host;
-
-        //             if (HostUtils.areEqualHostsIncludingId(newHost, host)) {
-        //                 status = SaveStatus.NotChanged;
-        //             } else {
-        //                 this._cache[id].host = newHost;
-        //                 status = SaveStatus.Updated;
-        //             }
-
-        //         } else {
-
-        //             this._cache[id] = {
-        //                 host: newHost,
-        //                 deleted: false
-        //             };
-        //             status = SaveStatus.Created;
-
-        //         }
-
-        //         resolve({
-        //             host: { ...newHost },
-        //             status: status
-        //         });
-
-        //     } catch (err) {
-        //         reject(err);
-        //     }
-        // });
+        const id = host.id!
+        const newHost: Host = {
+            ...host,
+        };
+        return new Promise((resolve, reject) => {
+            try {
+                if (!has(this._cache, id)) {
+                    throw new TypeError(`Id ${id} does not exist`)
+                }
+                const record: CacheRecord = this._cache[id];
+                this._cache[id].host = newHost;
+                this._cache[id].deleted = false;
+                resolve({
+                    ...newHost
+                });
+            } catch (err) {
+                reject(err);
+            }
+        });
 
     }
 
     public delete(id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
-
             try {
-
                 if (has(this._cache, id)) {
-
                     const record: CacheRecord = this._cache[id];
-
-                    record.deleted = true;
-
-                    resolve(true);
-
+                    if (record.deleted) {
+                        resolve(false)
+                    } else {
+                        record.deleted = true;
+                        resolve(true);
+                    }
                 } else {
                     resolve(false);
                 }
-
             } catch (err) {
                 reject(err);
             }
-
         });
     }
 
