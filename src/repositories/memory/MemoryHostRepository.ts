@@ -1,6 +1,6 @@
 import { HostRepository } from '../../types/HostRepository'
-import Host, { HostPage, HostSaveResult, SaveStatus } from '../../types/Host'
-import {has, keys, map, slice, filter, find, remove, forEach} from "../../modules/lodash";
+import Host from '../../types/Host'
+import { has, keys, map, slice, filter, find, remove, forEach } from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import { v4 as uuidV4 } from "uuid";
 import HostUtils from "../../services/HostUtils";
@@ -15,7 +15,7 @@ const MAXIMUM_ID_GENERATION_LOOP_TIMES = 100;
 /**
  * Interval in microseconds when to delete soft deleted content
  */
-const HARD_DELETE_INTERVAL = 300*1000;
+const HARD_DELETE_INTERVAL = 300 * 1000;
 
 interface CacheRecord {
 
@@ -26,37 +26,37 @@ interface CacheRecord {
 }
 
 interface DeleteIntervalCallback {
-    () : void
+    (): void
 }
 
 export class MemoryHostRepository implements HostRepository {
 
-    private _cache    : Record<string, CacheRecord>;
+    private _cache: Record<string, CacheRecord>;
 
     /**
      * Interval when to delete deleted records
      *
      * @private
      */
-    private _intervalListener : any | undefined;
+    private _intervalListener: any | undefined;
 
-    private readonly _intervalCallback : DeleteIntervalCallback;
+    private readonly _intervalCallback: DeleteIntervalCallback;
 
-    public constructor () {
+    public constructor() {
 
-        this._cache    = {};
+        this._cache = {};
         this._intervalListener = undefined;
         this._intervalCallback = this.onInterval.bind(this);
 
     }
 
-    public onInterval () {
+    public onInterval() {
 
         this._deleteSoftDeletedItems();
 
     }
 
-    public initialize (): void {
+    public initialize(): void {
 
         this._cache = {};
 
@@ -64,7 +64,7 @@ export class MemoryHostRepository implements HostRepository {
 
     }
 
-    public destroy () : void {
+    public destroy(): void {
 
         if (this._intervalListener !== undefined) {
             clearInterval(this._intervalListener);
@@ -73,17 +73,16 @@ export class MemoryHostRepository implements HostRepository {
 
     }
 
-    public findById (id: string, allowDeleted?: true): Promise<Host | undefined> {
+    public findById(id: string, allowDeleted?: true): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
-
             try {
                 if (has(this._cache, id)) {
 
-                    const record : CacheRecord = this._cache[id];
-                    const host   : Host        = record.host;
+                    const record: CacheRecord = this._cache[id];
+                    const host: Host = record.host;
 
                     if (allowDeleted === true) {
-                        resolve({ ...host });
+                        resolve({ ...host, deleted: record.deleted });
                     } else if (!record.deleted) {
                         resolve({ ...host });
                     } else {
@@ -100,23 +99,18 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public findByName (name: string, allowDeleted?: true): Promise<Host | undefined> {
+    public findByName(name: string, allowDeleted?: true): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
 
             try {
-
-                // FIXME: This could use another cache for names, except performance probably isn't the problem since memory host repository is
-                //        only meant for development.
-
-                const allRecords : Array<CacheRecord>      = map(keys(this._cache), (key: string) : CacheRecord => this._cache[key]);
-                const record     : CacheRecord | undefined = find(allRecords, (record: CacheRecord) : boolean => record.host.name === name);
+                const allRecords: Array<CacheRecord> = map(keys(this._cache), (key: string): CacheRecord => this._cache[key]);
+                const record: CacheRecord | undefined = find(allRecords, (record: CacheRecord): boolean => record.host.name === name);
 
                 if (record !== undefined) {
-
-                    const host : Host  = record.host;
+                    const host: Host = record.host;
 
                     if (allowDeleted === true) {
-                        resolve({ ...host });
+                        resolve({ ...host, deleted: record.deleted });
                     } else if (!record.deleted) {
                         resolve({ ...host });
                     } else {
@@ -133,86 +127,57 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public getPage (page: number, size: number): Promise<HostPage> {
-
+    public getPage(page: number, size: number): Promise<Host[]> {
         return new Promise((resolve, reject) => {
             try {
-
                 const allKeys: Array<string> = keys(this._cache);
-
-                const allActiveRecords : Array<CacheRecord> = filter(
+                const allActiveRecords: Array<CacheRecord> = filter(
                     map(allKeys, (key: string): CacheRecord => this._cache[key]),
                     (record: CacheRecord) => !record.deleted
                 );
-
-                // FIXME: handle input limits correctly
-
-                const hosts = slice(allActiveRecords, (page - 1) * size, size).map(
+                const hosts = slice(allActiveRecords, (page - 1) * size, page * size).map(
                     (record: CacheRecord): Host => {
                         return { ...record.host };
                     }
                 );
-
-                const totalCount = allActiveRecords.length;
-
-                const pageCount = Math.ceil(totalCount / size);
-
-                resolve({
-                    hosts,
-                    totalCount,
-                    pageCount
-                });
-
+                resolve(hosts);
             } catch (err) {
                 reject(err);
             }
         });
-
     }
 
-    public create (host: Host, id?: string): Promise<HostSaveResult> {
-
-        const newHost: Host = {...host};
-
+    public getCount(): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
+                const allKeys: Array<string> = keys(this._cache);
+                const allActiveRecords: Array<CacheRecord> = filter(
+                    map(allKeys, (key: string): CacheRecord => this._cache[key]),
+                    (record: CacheRecord) => !record.deleted
+                );
+                resolve(allActiveRecords.length);
+            } catch (err) {
+                reject(err);
+            }
+        })
+    }
 
-                let newId : string = id ?? this._createId();
-
-                let status: SaveStatus = SaveStatus.NotChanged;
-
+    public create(host: Host): Promise<Host> {
+        const newHost: Host = { ...host };
+        return new Promise((resolve, reject) => {
+            try {
+                const newId: string = host.id ?? this._createId();
                 if (has(this._cache, newId)) {
-
-                    const record : CacheRecord = this._cache[newId];
-                    const host   : Host        = record.host;
-
-                    if (HostUtils.areEqualHostsIncludingId(newHost, host)) {
-                        status = SaveStatus.NotChanged;
-                    } else {
-                        this._cache[newId] = {
-                            host: newHost,
-                            deleted: false
-                        };
-                        status = SaveStatus.Updated;
-                    }
-
-                } else {
-
-                    this._cache[newId] = {
-                        host: newHost,
-                        deleted: false
-                    };
-                    status = SaveStatus.Created;
-
+                    throw new TypeError(`Id ${newId} already exists`)
                 }
-
+                newHost.id = newId
+                this._cache[newId] = {
+                    host: newHost,
+                    deleted: false
+                };
                 resolve({
-                    host: {
-                        ...newHost
-                    },
-                    status: status
+                    ...newHost
                 });
-
             } catch (err) {
                 reject(err);
             }
@@ -220,45 +185,22 @@ export class MemoryHostRepository implements HostRepository {
 
     }
 
-    public update (host: Host, id: string): Promise<HostSaveResult> {
-
+    public update(host: Host): Promise<Host> {
+        const id = host.id!
         const newHost: Host = {
             ...host,
-            id: id
         };
-
         return new Promise((resolve, reject) => {
             try {
-
-                let status: SaveStatus = SaveStatus.NotChanged;
-
-                if (has(this._cache, id)) {
-
-                    const record : CacheRecord = this._cache[id];
-                    const host   : Host        = record.host;
-
-                    if (HostUtils.areEqualHostsIncludingId(newHost, host)) {
-                        status = SaveStatus.NotChanged;
-                    } else {
-                        this._cache[id].host = newHost;
-                        status = SaveStatus.Updated;
-                    }
-
-                } else {
-
-                    this._cache[id] = {
-                        host: newHost,
-                        deleted: false
-                    };
-                    status = SaveStatus.Created;
-
+                if (!has(this._cache, id)) {
+                    throw new TypeError(`Id ${id} does not exist`)
                 }
-
+                const record: CacheRecord = this._cache[id];
+                this._cache[id].host = newHost;
+                this._cache[id].deleted = false;
                 resolve({
-                    host: {...newHost},
-                    status: status
+                    ...newHost
                 });
-
             } catch (err) {
                 reject(err);
             }
@@ -266,31 +208,27 @@ export class MemoryHostRepository implements HostRepository {
 
     }
 
-    public delete (id: string): Promise<boolean> {
+    public delete(id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
-
             try {
-
                 if (has(this._cache, id)) {
-
-                    const record : CacheRecord = this._cache[id];
-
-                    record.deleted = true;
-
-                    resolve(true);
-
+                    const record: CacheRecord = this._cache[id];
+                    if (record.deleted) {
+                        resolve(false)
+                    } else {
+                        record.deleted = true;
+                        resolve(true);
+                    }
                 } else {
                     resolve(false);
                 }
-
             } catch (err) {
                 reject(err);
             }
-
         });
     }
 
-    protected _createId () : string {
+    protected _createId(): string {
 
         let id;
 
@@ -302,15 +240,15 @@ export class MemoryHostRepository implements HostRepository {
             if (i < 0) {
                 throw new Error('Failed to generate a unique ID');
             }
-        } while ( !(id && !has(this._cache, id)) );
+        } while (!(id && !has(this._cache, id)));
 
         return id;
 
     }
 
-    protected _deleteSoftDeletedItems () {
+    protected _deleteSoftDeletedItems() {
 
-        let softDeletedItems : number = 0;
+        let softDeletedItems: number = 0;
 
         forEach(keys(this._cache), (key: string) => {
 

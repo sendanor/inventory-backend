@@ -1,4 +1,4 @@
-import Host, { HostPage, HostSaveResult } from './Host';
+import Host from './Host';
 
 /**
  * Persistence implementation for hosts. All functions in this interface (except initialize()) return a Promise.
@@ -42,27 +42,32 @@ export interface HostRepository {
      *
      * @param page page number, starting from 1
      * @param size page size
-     * @returns Page of hosts
+     * @returns Page of hosts sorted by name
      */
-    getPage(page: number, size: number): Promise<HostPage>
+    getPage(page: number, size: number): Promise<Host[]>
+
+    /**
+     * Gets a total count of hosts
+     */
+    getCount(): Promise<number>
 
     /**
      * Creates a new host
      *
-     * @param host Host data
-     * @param id? Id to be assigned for a new host. If undefined, storage should generate the id
-     * @returns HostSaveResult indicating result of save operation
+     * @param host Host data. If data contains an id value, it is assigned for a new host.
+     *             Otherwise, storage should generate the id
+     * @returns Created host
      */
-    create(host: Host, id?: string): Promise<HostSaveResult>
+    create(host: Host): Promise<Host>
 
     /**
      * Updates an existing host
      *
      * @param host Host data
      * @param id Id of the host to be updated
-     * @returns HostSaveResult indicating result of save operation
+     * @returns Updated host
      */
-    update(host: Host, id: string): Promise<HostSaveResult>
+    update(host: Host): Promise<Host>
 
     /**
      * Deletes a host

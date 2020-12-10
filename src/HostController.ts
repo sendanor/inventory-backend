@@ -1,8 +1,10 @@
 import { IncomingMessage, ServerResponse } from "http"
 import { HostRepository } from "./types/HostRepository"
-import Host, { HostPage, HostSaveResult, SaveStatus } from './types/Host'
+import HostManager, { HostSaveResult, SaveStatus } from "./services/HostManager"
+import Host, { HostDto } from './types/Host'
 import validate from './DefaultHostValidator'
 import LogService from "./services/LogService";
+import { IB_DEFAULT_PAGE_SIZE } from "./constants/env";
 
 const LOG = LogService.createLogger('HostController');
 
@@ -34,10 +36,10 @@ export interface Request {
 
 export class HostController {
 
-    private repository: HostRepository
+    private manager: HostManager
 
     constructor(repository: HostRepository) {
-        this.repository = repository
+        this.manager = new HostManager(repository)
     }
 
     public requestListener(msg: IncomingMessage, res: ServerResponse) {
@@ -59,8 +61,8 @@ export class HostController {
             const sizeMatch: Array<string> | null = url.match(sizePattern)
             const id = idMatch ? idMatch[1] : undefined
             const name = nameMatch ? decodeURI(nameMatch[1]) : undefined
-            const page: number | undefined = this.parsePositiveIntMatch(pageMatch)
-            const size: number | undefined = this.parsePositiveIntMatch(sizeMatch)
+            const page: number | undefined = !id && !name ? this.parsePositiveIntMatch(pageMatch, 1) : undefined
+            const size: number | undefined = !id && !name ? this.parsePositiveIntMatch(sizeMatch, IB_DEFAULT_PAGE_SIZE) : undefined
             switch (req.method!.toLowerCase()) {
                 case 'get': resolve({ method: Method.GET, url, id, name, page, size }); return;
                 case 'post': resolve({ method: Method.POST, url }); return;
@@ -72,76 +74,54 @@ export class HostController {
         })
     }
 
-    private parsePositiveIntMatch(match: Array<string> | null): number | undefined {
+    private parsePositiveIntMatch(match: Array<string> | null, defaultValue: number): number | undefined {
         if (match && parseInt(match[1], 10) > 0) {
             return parseInt(match[1], 10)
         }
-        return undefined
+        return defaultValue
     }
 
     public processRequest(req: IncomingMessage, res: ServerResponse, request: Request) {
         const { method, url, id, name, page, size } = request
 
         if (method === Method.GET && id) {
-            this.repository.findById(id)
-                .then(host => this.writeResponse(
-                    res,
-                    host ? Status.OK : Status.NotFound,
-                    host ? this.sanitizeHost(host) : null,
-                    false))
+            this.manager.findById(id)
+                .then(host => this.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
                 .catch(err => this.writeInternalError(res, err))
 
         } else if (method === Method.GET && name) {
-            this.repository.findByName(name)
-                .then(host => this.writeResponse(
-                    res,
-                    host ? Status.OK : Status.NotFound,
-                    host ? this.sanitizeHost(host) : null,
-                    false))
+            this.manager.findByName(name)
+                .then(host => this.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
                 .catch(err => this.writeInternalError(res, err))
 
-
         } else if (method === Method.GET && page && size) {
-            this.repository.getPage(page, size)
-                .then(hosts => {
-                    const sanitizedHosts: HostPage = {
-                        totalCount: hosts.totalCount,
-                        pageCount: hosts.pageCount,
-                        hosts: hosts.hosts.map(h => this.sanitizeHost(h)),
-                    }
-                    this.writeResponse(res, Status.OK, sanitizedHosts, false)
-                })
+            this.manager.getPage(page, size)
+                .then(page => this.writeResponse(res, Status.OK, page, false))
                 .catch(err => this.writeInternalError(res, err))
 
         } else if (method === Method.POST && url === '/hosts') {
             this.getValidRequestBody(req)
-                .then(host => this.repository.create(host)
+                .then(host => this.manager.create({ name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
 
         } else if (method === Method.PUT && id) {
             this.getValidRequestBody(req)
-                .then(host => this.repository.findById(id, true)
-                    .then(current => current ?
-                        this.repository.update(host, current.id!) :
-                        this.repository.create(host, id))
+                .then(host => this.manager.saveById({ id, name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
 
         } else if (method === Method.PATCH && url === '/hosts') {
             this.getValidRequestBody(req)
-                .then(host => this.repository.findByName(host.name, true)
-                    .then(current => current ?
-                        this.repository.update(host, current.id!) :
-                        this.repository.create(host))
+                .then(host => this.manager.saveByName({ name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
 
         } else if (method === Method.DELETE && id) {
-            this.repository.delete(id)
+            this.manager.delete(id)
                 .then(found => this.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
                 .catch(err => this.writeInternalError(res, err))
 
@@ -179,7 +159,7 @@ export class HostController {
         };
     }
 
-    private getValidRequestBody(req: IncomingMessage): Promise<Host> {
+    private getValidRequestBody(req: IncomingMessage): Promise<HostDto> {
         return this.getBody(req).then(body => {
             if (body.name && body.data) {
                 return validate(body)
