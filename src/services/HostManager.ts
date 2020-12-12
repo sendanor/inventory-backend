@@ -103,7 +103,7 @@ export default class HostManager {
                 }
                 const merged = { ...host, data: merge({}, current.data, host.data) }
                 if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), merged)) {
-                    return resolve({ status: SaveStatus.NotChanged })
+                    return resolve({ host: current, status: SaveStatus.NotChanged })
                 }
                 const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
                 this.repository.update(Mapper.toUpdatedHost(merged, current))
