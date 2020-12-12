@@ -67,7 +67,7 @@ export class HostController {
                 case 'get': resolve({ method: Method.GET, url, id, name, page, size }); return;
                 case 'post': resolve({ method: Method.POST, url }); return;
                 case 'put': resolve({ method: Method.PUT, url, id }); return;
-                case 'delete': resolve({ method: Method.DELETE, url, id }); return;
+                case 'delete': resolve({ method: Method.DELETE, url, id, name }); return;
                 case 'patch': resolve({ method: Method.PATCH, url, id }); return;
             }
             resolve({ url, id })
@@ -121,7 +121,12 @@ export class HostController {
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
 
         } else if (method === Method.DELETE && id) {
-            this.manager.delete(id)
+            this.manager.deleteById(id)
+                .then(found => this.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
+                .catch(err => this.writeInternalError(res, err))
+
+        } else if (method === Method.DELETE && name) {
+            this.manager.deleteByName(name)
                 .then(found => this.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
                 .catch(err => this.writeInternalError(res, err))
 

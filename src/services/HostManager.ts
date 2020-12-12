@@ -39,7 +39,7 @@ export default class HostManager {
     }
 
     public findByName(name: string): Promise<HostDto | undefined> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             this.repository.findByName(name).then(host => resolve(host ? Mapper.toDto(host) : undefined))
         })
     }
@@ -108,7 +108,7 @@ export default class HostManager {
         })
     }
 
-    public delete(id: string): Promise<boolean> {
+    public deleteById(id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.repository.delete(id)
                 .then(found => resolve(found))
@@ -116,6 +116,14 @@ export default class HostManager {
         })
     }
 
+    public deleteByName(name: string): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            this.findByName(name)
+                .then(host => host ? this.repository.delete(host.id!) : false)
+                .then(found => resolve(found))
+                .catch(err => reject(err))
+        })
+    }
 
     private validateName(name: string, id?: string): Promise<boolean> {
         return new Promise((resolve, _) => {
