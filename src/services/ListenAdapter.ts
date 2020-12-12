@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import {trim, isSafeInteger} from "../modules/lodash";
 import Observable, {ObserverCallback, ObserverDestructor} from "./Observable";
 import LogService from "./LogService";

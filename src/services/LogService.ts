@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import InventoryLogLevel from "../types/InventoryLogLevel";
 import {IB_LOG_LEVEL} from "../constants/env";
 

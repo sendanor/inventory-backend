@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import AssertUtils from "./AssertUtils";
 import {trim} from "../modules/lodash";
 

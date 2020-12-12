@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import { Pool } from "pg"
 import { HostRepository } from '../../types/HostRepository'
 import Host from '../../types/Host'

@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import Host from './types/Host';
 import HostValidator from './types/HostValidator'
 

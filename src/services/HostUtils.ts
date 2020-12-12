@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import Host, { HostDto } from "../types/Host";
 import { isEqual, isString } from "../modules/lodash";
 

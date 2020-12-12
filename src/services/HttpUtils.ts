@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import LogService from "./LogService";
 import ListenAdapter, {ListenableServer} from "./ListenAdapter";
 

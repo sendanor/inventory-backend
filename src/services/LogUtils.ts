@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import {trim} from "../modules/lodash";
 import InventoryLogLevel from "../types/InventoryLogLevel";
 

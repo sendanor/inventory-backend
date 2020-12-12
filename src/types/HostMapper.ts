@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import Host, { HostDto } from '../types/Host'
 
 export default class HostMapper {

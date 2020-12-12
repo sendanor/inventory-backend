@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import { HostRepository } from "../types/HostRepository"
 import Mapper from "../types/HostMapper"
 import Host, { HostDto } from '../types/Host'

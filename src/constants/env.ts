@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import InventoryLogLevel from "../types/InventoryLogLevel";
 import LogUtils from "../services/LogUtils";
 import InventoryRepository, { parseInventoryRepository } from "../types/InventoryRepository";

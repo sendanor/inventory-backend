@@ -1,9 +1,11 @@
 {
     "name": "inventory-backend",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Inventory Backend",
     "main": "dist/index.js",
-    "bin": {},
+    "bin": {
+        "inventory-backend": "./dist/server.ts"
+    },
     "scripts": {
         "start": "node dist/server.js",
         "build": "tsc",

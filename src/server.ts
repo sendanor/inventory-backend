@@ -1,3 +1,6 @@
+#!/usr/bin/env node
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import { ProcessUtils } from './services/ProcessUtils'
 ProcessUtils.initEnvFromDefaultFiles();
 
@@ -10,7 +13,6 @@ import {IB_LISTEN, IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY} from "./co
 import LogService from "./services/LogService";
 import HostRepository from "./types/HostRepository";
 import InventoryRepository from "./types/InventoryRepository";
-import {HttpUtils} from "./services/HttpUtils";
 import ListenAdapter from "./services/ListenAdapter";
 
 const LOG = LogService.createLogger('server');

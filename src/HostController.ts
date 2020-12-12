@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Sendanor. All rights reserved.
+
 import { IncomingMessage, ServerResponse } from "http"
 import { HostRepository } from "./types/HostRepository"
 import HostManager, { HostSaveResult, SaveStatus } from "./services/HostManager"
