@@ -1,7 +1,7 @@
 export default interface Host {
     id?: string
     name: string
-    data: JSON
+    data: any
     deleted?: boolean
     createdTime: Date
     modifiedTime?: Date
@@ -11,5 +11,5 @@ export default interface Host {
 export interface HostDto {
     id?: string
     name: string
-    data: JSON
+    data: any
 }

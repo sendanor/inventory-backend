@@ -2,6 +2,7 @@ import { HostRepository } from "../types/HostRepository"
 import Mapper from "../types/HostMapper"
 import Host, { HostDto } from '../types/Host'
 import HostUtils from "./HostUtils"
+import { merge } from "../modules/lodash";
 
 interface HostPageDto {
     hosts: HostDto[]
@@ -71,38 +72,41 @@ export default class HostManager {
     }
 
     public saveById(dto: HostDto): Promise<HostSaveResult> {
-        const id = dto.id!
+        const host: HostDto = { ...dto }
+        const id = host.id!
         return new Promise((resolve, reject) => {
             this.repository.findById(id, true).then(current => {
                 if (!current) {
-                    return resolve(this.create(dto))
+                    return resolve(this.create(host))
                 }
-                if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), dto)) {
+                if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), host)) {
                     return resolve({ status: SaveStatus.NotChanged })
                 }
-                this.validateName(dto.name, id).then(valid => {
+                this.validateName(host.name, id).then(valid => {
                     if (!valid) {
                         return resolve({ status: SaveStatus.NameConflict })
                     }
                     const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
-                    this.repository.update(Mapper.toUpdatedHost(dto, current))
+                    this.repository.update(Mapper.toUpdatedHost(host, current))
                         .then(host => resolve({ status, host }))
                 })
             }).catch(err => reject(err))
         })
     }
 
-    public saveByName(dto: HostDto): Promise<HostSaveResult> {
+    public mergeByName(dto: HostDto): Promise<HostSaveResult> {
+        const host: HostDto = { ...dto, id: undefined }
         return new Promise((resolve, reject) => {
-            this.repository.findByName(dto.name, true).then(current => {
+            this.repository.findByName(host.name, true).then(current => {
                 if (!current) {
-                    return resolve(this.create(dto))
+                    return resolve(this.create(host))
                 }
-                if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), dto)) {
+                const merged = { ...host, data: merge({}, current.data, host.data) }
+                if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), merged)) {
                     return resolve({ status: SaveStatus.NotChanged })
                 }
                 const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
-                this.repository.update(Mapper.toUpdatedHost(dto, current))
+                this.repository.update(Mapper.toUpdatedHost(merged, current))
                     .then(host => resolve({ status, host }))
             }).catch(err => reject(err))
         })

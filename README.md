@@ -195,7 +195,9 @@ Commercial support up to 10 years is available from [Sendanor](https://sendanor.
 }
 ```
 
-## Update or create host by name
+## Patch host by name
+
+**Note**: Only data properties present in request are updated
 
 **URL** : `/hosts`
 

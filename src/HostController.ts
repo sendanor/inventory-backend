@@ -115,7 +115,7 @@ export class HostController {
 
         } else if (method === Method.PATCH && url === '/hosts') {
             this.getValidRequestBody(req)
-                .then(host => this.manager.saveByName({ name: host.name, data: host.data })
+                .then(host => this.manager.mergeByName({ name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))

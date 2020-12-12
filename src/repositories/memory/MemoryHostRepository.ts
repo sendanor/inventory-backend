@@ -1,9 +1,8 @@
 import { HostRepository } from '../../types/HostRepository'
 import Host from '../../types/Host'
-import { has, keys, map, slice, filter, find, remove, forEach } from "../../modules/lodash";
+import { has, keys, map, slice, filter, find, forEach } from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import { v4 as uuidV4 } from "uuid";
-import HostUtils from "../../services/HostUtils";
 
 const LOG = LogService.createLogger('MemoryHostRepository');
 
