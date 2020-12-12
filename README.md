@@ -227,7 +227,7 @@ Commercial support up to 10 years is available from [Sendanor](https://sendanor.
 
 ## Delete host
 
-**URL** : `/hosts/:id`
+**URL** : `/hosts/:id` or `/hosts/:name`
 
 **Method** : `DELETE`
 
