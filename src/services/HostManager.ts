@@ -35,25 +35,25 @@ export default class HostManager {
         this.repository = repository
     }
 
-    public findById(id: string): Promise<HostDto | undefined> {
+    public findById(domainId: string, id: string): Promise<HostDto | undefined> {
         return new Promise((resolve, reject) => {
-            this.repository.findById(id)
+            this.repository.findById(domainId, id)
                 .then(host => resolve(host ? Mapper.toDto(host) : undefined))
                 .catch(err => reject(err))
         })
     }
 
-    public findByName(name: string): Promise<HostDto | undefined> {
+    public findByName(domainId: string, name: string): Promise<HostDto | undefined> {
         return new Promise((resolve, reject) => {
-            this.repository.findByName(name)
+            this.repository.findByName(domainId, name)
                 .then(host => resolve(host ? Mapper.toDto(host) : undefined))
                 .catch(err => reject(err))
         })
     }
 
-    public getPage(page: number, size: number): Promise<HostPageDto> {
-        const hostsPromise = this.repository.getPage(page, size)
-        const countPromise = this.repository.getCount()
+    public getPage(domainId: string, page: number, size: number): Promise<HostPageDto> {
+        const hostsPromise = this.repository.getPage(domainId, page, size)
+        const countPromise = this.repository.getCount(domainId)
         return Promise.all([hostsPromise, countPromise])
             .then(values => {
                 const hosts = (values[0] as Host[]).map(h => Mapper.toDto(h))
@@ -68,7 +68,7 @@ export default class HostManager {
     public create(dto: HostDto): Promise<HostSaveResult> {
         const host: Host = { ...dto, createdTime: new Date() }
         return new Promise((resolve, reject) => {
-            this.validateName(dto.name, dto.id).then(valid => {
+            this.validateName(host).then(valid => {
                 if (!valid) {
                     return resolve({ status: SaveStatus.NameConflict })
                 }
@@ -81,14 +81,14 @@ export default class HostManager {
         const host: HostDto = { ...dto }
         const id = host.id!
         return new Promise((resolve, reject) => {
-            this.repository.findById(id, true).then(current => {
+            this.repository.findById(host.domainId, id, true).then(current => {
                 if (!current) {
                     return resolve(this.create(host))
                 }
                 if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), host)) {
                     return resolve({ status: SaveStatus.NotChanged })
                 }
-                return this.validateName(host.name, id).then(valid => {
+                return this.validateName(host).then(valid => {
                     if (!valid) {
                         return resolve({ status: SaveStatus.NameConflict })
                     }
@@ -103,7 +103,7 @@ export default class HostManager {
     public mergeByName(dto: HostDto): Promise<HostSaveResult> {
         const host: HostDto = { ...dto, id: undefined }
         return new Promise((resolve, reject) => {
-            this.repository.findByName(host.name, true).then(current => {
+            this.repository.findByName(host.domainId, host.name, true).then(current => {
                 if (!current) {
                     return resolve(this.create(host))
                 }
@@ -118,26 +118,27 @@ export default class HostManager {
         })
     }
 
-    public deleteById(id: string): Promise<boolean> {
+    public deleteById(domainId: string, id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
-            this.repository.delete(id)
+            this.repository.delete(domainId, id)
                 .then(found => resolve(found))
                 .catch(err => reject(err))
         })
     }
 
-    public deleteByName(name: string): Promise<boolean> {
+    public deleteByName(domainId: string, name: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
-            this.findByName(name)
-                .then(host => host ? this.repository.delete(host.id!) : false)
+            this.findByName(domainId, name)
+                .then(host => host ? this.repository.delete(domainId, host.id!) : false)
                 .then(found => resolve(found))
                 .catch(err => reject(err))
         })
     }
 
-    private validateName(name: string, id?: string): Promise<boolean> {
+    private validateName(host: HostDto): Promise<boolean> {
+        const { id, domainId, name } = host
         return new Promise((resolve, _) => {
-            this.repository.findByName(name, true).then(host => resolve(!host || host.id === id))
+            this.repository.findByName(domainId, name, true).then(host => resolve(!host || host.id === id))
         })
     }
 }

@@ -74,7 +74,7 @@ export class MemoryHostRepository implements HostRepository {
 
     }
 
-    public findById(id: string, allowDeleted?: true): Promise<Host | undefined> {
+    public findById(domainId: string, id: string, allowDeleted?: true): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
             try {
                 if (has(this._cache, id)) {
@@ -100,7 +100,7 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public findByName(name: string, allowDeleted?: true): Promise<Host | undefined> {
+    public findByName(domainId: string, name: string, allowDeleted?: true): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
 
             try {
@@ -128,7 +128,7 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public getPage(page: number, size: number): Promise<Host[]> {
+    public getPage(domainId: string, page: number, size: number): Promise<Host[]> {
         return new Promise((resolve, reject) => {
             try {
                 const allKeys: Array<string> = keys(this._cache);
@@ -148,7 +148,7 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public getCount(): Promise<number> {
+    public getCount(domainId: string): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
                 const allKeys: Array<string> = keys(this._cache);
@@ -209,7 +209,7 @@ export class MemoryHostRepository implements HostRepository {
 
     }
 
-    public delete(id: string): Promise<boolean> {
+    public delete(domainId: string, id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
             try {
                 if (has(this._cache, id)) {

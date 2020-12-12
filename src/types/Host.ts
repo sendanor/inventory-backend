@@ -2,6 +2,7 @@
 
 export default interface Host {
     id?: string
+    domainId: string
     name: string
     data: any
     deleted?: boolean
@@ -12,6 +13,7 @@ export default interface Host {
 
 export interface HostDto {
     id?: string
+    domainId: string
     name: string
     data: any
 }

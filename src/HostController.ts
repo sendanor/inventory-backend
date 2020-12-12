@@ -31,6 +31,7 @@ export interface Request {
     method?: Method,
     url: string,
     id?: string,
+    domainId?: string,
     name?: string,
     page?: number,
     size?: number
@@ -51,28 +52,33 @@ export class HostController {
     }
 
     private parseRequest(req: IncomingMessage): Promise<Request> {
-        return new Promise((resolve, _) => {
-            const idPattern: RegExp = /\/hosts\/([\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12})/
-            const namePattern: RegExp = /\/hosts\/(.+)/
-            const sizePattern: RegExp = /\/hosts.+size=(.+)/
-            const pagePattern: RegExp = /\/hosts.+page=(.+)/
-            const url = req.url!
-            const idMatch = url.match(idPattern)
-            const nameMatch = !idMatch && url.match(namePattern)
-            const pageMatch: Array<string> | null = url.match(pagePattern)
-            const sizeMatch: Array<string> | null = url.match(sizePattern)
-            const id = idMatch ? idMatch[1] : undefined
-            const name = nameMatch ? decodeURI(nameMatch[1]) : undefined
-            const page: number | undefined = !id && !name ? this.parsePositiveIntMatch(pageMatch, 1) : undefined
-            const size: number | undefined = !id && !name ? this.parsePositiveIntMatch(sizeMatch, IB_DEFAULT_PAGE_SIZE) : undefined
-            switch (req.method!.toLowerCase()) {
-                case 'get': resolve({ method: Method.GET, url, id, name, page, size }); return;
-                case 'post': resolve({ method: Method.POST, url }); return;
-                case 'put': resolve({ method: Method.PUT, url, id }); return;
-                case 'delete': resolve({ method: Method.DELETE, url, id, name }); return;
-                case 'patch': resolve({ method: Method.PATCH, url, id }); return;
+        return new Promise((resolve, reject) => {
+            try {
+                const domainId = '11111111-1111-1111-1111-111111111111'
+                const idPattern: RegExp = /\/hosts\/([\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12})/
+                const namePattern: RegExp = /\/hosts\/(.+)/
+                const sizePattern: RegExp = /\/hosts.+size=(.+)/
+                const pagePattern: RegExp = /\/hosts.+page=(.+)/
+                const url = req.url!
+                const idMatch = url.match(idPattern)
+                const nameMatch = !idMatch && url.match(namePattern)
+                const pageMatch: Array<string> | null = url.match(pagePattern)
+                const sizeMatch: Array<string> | null = url.match(sizePattern)
+                const id = idMatch ? idMatch[1] : undefined
+                const name = nameMatch ? decodeURI(nameMatch[1]) : undefined
+                const page: number | undefined = !id && !name ? this.parsePositiveIntMatch(pageMatch, 1) : undefined
+                const size: number | undefined = !id && !name ? this.parsePositiveIntMatch(sizeMatch, IB_DEFAULT_PAGE_SIZE) : undefined
+                switch (req.method!.toLowerCase()) {
+                    case 'get': resolve({ method: Method.GET, url, id, domainId, name, page, size }); return;
+                    case 'post': resolve({ method: Method.POST, url, domainId }); return;
+                    case 'put': resolve({ method: Method.PUT, url, id, domainId }); return;
+                    case 'delete': resolve({ method: Method.DELETE, url, id, domainId, name }); return;
+                    case 'patch': resolve({ method: Method.PATCH, url, id, domainId }); return;
+                }
+                resolve({ url, id, domainId })
+            } catch (error) {
+                reject(error)
             }
-            resolve({ url, id })
         })
     }
 
@@ -84,51 +90,51 @@ export class HostController {
     }
 
     public processRequest(req: IncomingMessage, res: ServerResponse, request: Request) {
-        const { method, url, id, name, page, size } = request
+        const { method, url, id, domainId, name: urlName, page, size } = request
 
         if (method === Method.GET && id) {
-            this.manager.findById(id)
+            this.manager.findById(domainId!, id)
                 .then(host => this.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
                 .catch(err => this.writeInternalError(res, err))
 
-        } else if (method === Method.GET && name) {
-            this.manager.findByName(name)
+        } else if (method === Method.GET && urlName) {
+            this.manager.findByName(domainId!, urlName)
                 .then(host => this.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
                 .catch(err => this.writeInternalError(res, err))
 
         } else if (method === Method.GET && page && size) {
-            this.manager.getPage(page, size)
+            this.manager.getPage(domainId!, page, size)
                 .then(page => this.writeResponse(res, Status.OK, page, false))
                 .catch(err => this.writeInternalError(res, err))
 
         } else if (method === Method.POST && url === '/hosts') {
             this.getValidRequestBody(req)
-                .then(host => this.manager.create({ name: host.name, data: host.data })
+                .then(host => this.manager.create({ domainId: domainId!, name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
 
         } else if (method === Method.PUT && id) {
             this.getValidRequestBody(req)
-                .then(host => this.manager.saveById({ id, name: host.name, data: host.data })
+                .then(host => this.manager.saveById({ domainId: domainId!, id, name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
 
         } else if (method === Method.PATCH && url === '/hosts') {
             this.getValidRequestBody(req)
-                .then(host => this.manager.mergeByName({ name: host.name, data: host.data })
+                .then(host => this.manager.mergeByName({ domainId: domainId!, name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => this.writeInternalError(res, err)))
                 .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
 
         } else if (method === Method.DELETE && id) {
-            this.manager.deleteById(id)
+            this.manager.deleteById(domainId!, id)
                 .then(found => this.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
                 .catch(err => this.writeInternalError(res, err))
 
-        } else if (method === Method.DELETE && name) {
-            this.manager.deleteByName(name)
+        } else if (method === Method.DELETE && urlName) {
+            this.manager.deleteByName(domainId!, urlName)
                 .then(found => this.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
                 .catch(err => this.writeInternalError(res, err))
 
@@ -159,10 +165,9 @@ export class HostController {
     }
 
     private sanitizeHost(host: Host) {
+        const { id, domainId, name, data } = host
         return {
-            id: host.id,
-            name: host.name,
-            data: host.data
+            id, domainId, name, data
         };
     }
 
