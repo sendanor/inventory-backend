@@ -21,6 +21,14 @@ We will increase the price 10% weekly after [weekly milestone is completed](http
 
 Finnish customers can purchase the support plan from [our webstore](https://nor.fi/ansible). Please [contact us](https://sendanor.com), if you would like to purchase the plan from outside of Finland.
 
+### Install
+
+`npm i -g inventory-backend`
+
+...or directly from our Github:
+
+`npm i -g sendanor/inventory-backend`
+
 ## Design
 
  * [Design document (in finnish)](https://docs.google.com/document/d/1-DSF5jr2fu3Cj0wVkpxPMVpevg8zl7VSU86Xf5UU1co/edit?usp=sharing)
