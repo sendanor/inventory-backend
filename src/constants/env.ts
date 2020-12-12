@@ -2,8 +2,34 @@ import InventoryLogLevel from "../types/InventoryLogLevel";
 import LogUtils from "../services/LogUtils";
 import InventoryRepository, { parseInventoryRepository } from "../types/InventoryRepository";
 
+/**
+ * This is the configuration string for server listener.
+ *
+ * It can be:
+ *
+ *   - http://localhost:3000
+ *   - socket:///path/to/socket.sock
+ *   - 3000
+ *
+ */
+export const IB_LISTEN = process?.env?.IB_LISTEN ?? "http://localhost:3000";
+
+/**
+ * This changes the default value in ListenAdapter for HTTP port names.
+ *
+ * You should use IB_LISTEN.
+ *
+ * @deprecated
+ */
 export const IB_LISTEN_PORT = process?.env?.IB_LISTEN_PORT ? parseInt(process?.env?.IB_LISTEN_PORT, 10) : 3000;
 
+/**
+ * This changes the default value in ListenAdapter for HTTP hostnames.
+ *
+ * You should use IB_LISTEN.
+ *
+ * @deprecated
+ */
 export const IB_LISTEN_HOSTNAME = process?.env?.IB_LISTEN_HOSTNAME ?? 'localhost';
 
 export const IB_REPOSITORY: InventoryRepository = process?.env?.IB_REPOSITORY ? parseInventoryRepository(process?.env?.IB_REPOSITORY) : InventoryRepository.PG;

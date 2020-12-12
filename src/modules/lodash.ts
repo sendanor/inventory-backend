@@ -2,6 +2,7 @@ import has from "lodash/has";
 import get from "lodash/get";
 import set from "lodash/set";
 import trim from "lodash/trim";
+import isSafeInteger from "lodash/isSafeInteger";
 import isEqual from "lodash/isEqual";
 import isNumber from "lodash/isNumber";
 import isString from "lodash/isString";
@@ -26,6 +27,7 @@ export {
     get,
     set,
     trim,
+    isSafeInteger,
     isEqual,
     isNumber,
     isString,
