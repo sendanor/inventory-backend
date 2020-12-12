@@ -34,14 +34,18 @@ export default class HostManager {
     }
 
     public findById(id: string): Promise<HostDto | undefined> {
-        return new Promise((resolve, _) => {
-            this.repository.findById(id).then(host => resolve(host ? Mapper.toDto(host) : undefined))
+        return new Promise((resolve, reject) => {
+            this.repository.findById(id)
+                .then(host => resolve(host ? Mapper.toDto(host) : undefined))
+                .catch(err => reject(err))
         })
     }
 
     public findByName(name: string): Promise<HostDto | undefined> {
-        return new Promise((resolve, _) => {
-            this.repository.findByName(name).then(host => resolve(host ? Mapper.toDto(host) : undefined))
+        return new Promise((resolve, reject) => {
+            this.repository.findByName(name)
+                .then(host => resolve(host ? Mapper.toDto(host) : undefined))
+                .catch(err => reject(err))
         })
     }
 
@@ -66,7 +70,7 @@ export default class HostManager {
                 if (!valid) {
                     return resolve({ status: SaveStatus.NameConflict })
                 }
-                this.repository.create(host).then(host => resolve({ host, status: SaveStatus.Created }))
+                return this.repository.create(host).then(host => resolve({ host, status: SaveStatus.Created }))
             }).catch(err => reject(err))
         })
     }
@@ -82,12 +86,12 @@ export default class HostManager {
                 if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), host)) {
                     return resolve({ status: SaveStatus.NotChanged })
                 }
-                this.validateName(host.name, id).then(valid => {
+                return this.validateName(host.name, id).then(valid => {
                     if (!valid) {
                         return resolve({ status: SaveStatus.NameConflict })
                     }
                     const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
-                    this.repository.update(Mapper.toUpdatedHost(host, current))
+                    return this.repository.update(Mapper.toUpdatedHost(host, current))
                         .then(host => resolve({ status, host }))
                 })
             }).catch(err => reject(err))
@@ -106,7 +110,7 @@ export default class HostManager {
                     return resolve({ host: current, status: SaveStatus.NotChanged })
                 }
                 const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
-                this.repository.update(Mapper.toUpdatedHost(merged, current))
+                return this.repository.update(Mapper.toUpdatedHost(merged, current))
                     .then(host => resolve({ status, host }))
             }).catch(err => reject(err))
         })
