@@ -15,7 +15,7 @@ const findByNameAllowDeleted = 'SELECT * FROM hosts WHERE "domainId" = $1 AND na
 const getPage = 'SELECT * FROM hosts  WHERE "domainId" = $1 AND NOT deleted ORDER BY name OFFSET $2 LIMIT $3'
 const totalCount = 'SELECT COUNT(*) FROM hosts  WHERE "domainId" = $1 AND NOT deleted'
 const insert = 'INSERT INTO hosts("domainId", name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *'
-const insertWithId = 'INSERT INTO hosts(id, name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *'
+const insertWithId = 'INSERT INTO hosts(id, "domainId", name, data, "createdTime") VALUES($1, $2, $3, $4, $5) RETURNING *'
 const update = 'UPDATE hosts SET name = $3, data = $4, "createdTime" = $5, "modifiedTime" = $6, deleted = $7, "deletedTime" = $8 WHERE "domainId" = $1 AND id = $2 RETURNING *'
 const remove = 'UPDATE hosts SET deleted = true, "deletedTime" = $3 WHERE "domainId" = $1 AND id = $2 AND NOT deleted RETURNING *'
 

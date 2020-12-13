@@ -86,7 +86,7 @@ export default class HostManager {
                     return resolve(this.create(host))
                 }
                 if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), host)) {
-                    return resolve({ status: SaveStatus.NotChanged })
+                    return resolve({ host: current, status: SaveStatus.NotChanged })
                 }
                 return this.validateName(host).then(valid => {
                     if (!valid) {

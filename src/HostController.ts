@@ -6,36 +6,9 @@ import HostManager, { HostSaveResult, SaveStatus } from "./services/HostManager"
 import Host, { HostDto } from './types/Host'
 import validate from './DefaultHostValidator'
 import LogService from "./services/LogService";
-import { IB_DEFAULT_PAGE_SIZE } from "./constants/env";
+import { ControllerUtils as Utils, Request, Method, Status } from './services/ControllerUtils'
 
 const LOG = LogService.createLogger('HostController');
-
-export enum Method {
-    GET = 'get',
-    POST = 'post',
-    PUT = 'put',
-    DELETE = 'delete',
-    PATCH = 'patch',
-}
-
-export enum Status {
-    OK = 200,
-    Created = 201,
-    BadRequest = 400,
-    NotFound = 404,
-    Conflict = 409,
-    InternalError = 500,
-}
-
-export interface Request {
-    method?: Method,
-    url: string,
-    id?: string,
-    domainId?: string,
-    name?: string,
-    page?: number,
-    size?: number
-}
 
 export class HostController {
 
@@ -45,101 +18,57 @@ export class HostController {
         this.manager = new HostManager(repository)
     }
 
-    public requestListener(msg: IncomingMessage, res: ServerResponse) {
-        this.parseRequest(msg)
-            .then(request => this.processRequest(msg, res, request))
-            .catch(err => this.writeBadRequest(res, err))
-    }
-
-    private parseRequest(req: IncomingMessage): Promise<Request> {
-        return new Promise((resolve, reject) => {
-            try {
-                const domainId = '11111111-1111-1111-1111-111111111111'
-                const idPattern: RegExp = /\/hosts\/([\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12})/
-                const namePattern: RegExp = /\/hosts\/(.+)/
-                const sizePattern: RegExp = /\/hosts.+size=(.+)/
-                const pagePattern: RegExp = /\/hosts.+page=(.+)/
-                const url = req.url!
-                const idMatch = url.match(idPattern)
-                const nameMatch = !idMatch && url.match(namePattern)
-                const pageMatch: Array<string> | null = url.match(pagePattern)
-                const sizeMatch: Array<string> | null = url.match(sizePattern)
-                const id = idMatch ? idMatch[1] : undefined
-                const name = nameMatch ? decodeURI(nameMatch[1]) : undefined
-                const page: number | undefined = !id && !name ? this.parsePositiveIntMatch(pageMatch, 1) : undefined
-                const size: number | undefined = !id && !name ? this.parsePositiveIntMatch(sizeMatch, IB_DEFAULT_PAGE_SIZE) : undefined
-                switch (req.method!.toLowerCase()) {
-                    case 'get': resolve({ method: Method.GET, url, id, domainId, name, page, size }); return;
-                    case 'post': resolve({ method: Method.POST, url, domainId }); return;
-                    case 'put': resolve({ method: Method.PUT, url, id, domainId }); return;
-                    case 'delete': resolve({ method: Method.DELETE, url, id, domainId, name }); return;
-                    case 'patch': resolve({ method: Method.PATCH, url, id, domainId }); return;
-                }
-                resolve({ url, id, domainId })
-            } catch (error) {
-                reject(error)
-            }
-        })
-    }
-
-    private parsePositiveIntMatch(match: Array<string> | null, defaultValue: number): number | undefined {
-        if (match && parseInt(match[1], 10) > 0) {
-            return parseInt(match[1], 10)
-        }
-        return defaultValue
-    }
-
     public processRequest(req: IncomingMessage, res: ServerResponse, request: Request) {
-        const { method, url, id, domainId, name: urlName, page, size } = request
+        const { method, url, hostId, domainId, hostName, page, size } = { ...request, domainId: request.domainId! }
 
-        if (method === Method.GET && id) {
-            this.manager.findById(domainId!, id)
-                .then(host => this.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
-                .catch(err => this.writeInternalError(res, err))
+        if (method === Method.GET && hostId) {
+            this.manager.findById(domainId, hostId)
+                .then(host => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
+                .catch(err => Utils.writeInternalError(res, err, LOG))
 
-        } else if (method === Method.GET && urlName) {
-            this.manager.findByName(domainId!, urlName)
-                .then(host => this.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
-                .catch(err => this.writeInternalError(res, err))
+        } else if (method === Method.GET && hostName) {
+            this.manager.findByName(domainId, hostName)
+                .then(host => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
+                .catch(err => Utils.writeInternalError(res, err, LOG))
 
         } else if (method === Method.GET && page && size) {
-            this.manager.getPage(domainId!, page, size)
-                .then(page => this.writeResponse(res, Status.OK, page, false))
-                .catch(err => this.writeInternalError(res, err))
+            this.manager.getPage(domainId, page, size)
+                .then(page => Utils.writeResponse(res, Status.OK, page, false))
+                .catch(err => Utils.writeInternalError(res, err, LOG))
 
-        } else if (method === Method.POST && url === '/hosts') {
+        } else if (method === Method.POST && !hostId && !hostName) {
             this.getValidRequestBody(req)
-                .then(host => this.manager.create({ domainId: domainId!, name: host.name, data: host.data })
+                .then(host => this.manager.create({ domainId, name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
-                    .catch(err => this.writeInternalError(res, err)))
-                .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
+                    .catch(err => Utils.writeInternalError(res, err, LOG)))
+                .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
 
-        } else if (method === Method.PUT && id) {
+        } else if (method === Method.PUT && hostId) {
             this.getValidRequestBody(req)
-                .then(host => this.manager.saveById({ domainId: domainId!, id, name: host.name, data: host.data })
+                .then(host => this.manager.saveById({ domainId, id: hostId, name: host.name, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
-                    .catch(err => this.writeInternalError(res, err)))
-                .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
+                    .catch(err => Utils.writeInternalError(res, err, LOG)))
+                .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
 
-        } else if (method === Method.PATCH && url === '/hosts') {
+        } else if (method === Method.PATCH && hostName) {
             this.getValidRequestBody(req)
-                .then(host => this.manager.mergeByName({ domainId: domainId!, name: host.name, data: host.data })
+                .then(host => this.manager.mergeByName({ domainId, name: hostName, data: host.data })
                     .then(result => this.handleSaveResult(result, res))
-                    .catch(err => this.writeInternalError(res, err)))
-                .catch(err => this.writeResponse(res, Status.BadRequest, err.message, false))
+                    .catch(err => Utils.writeInternalError(res, err, LOG)))
+                .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
 
-        } else if (method === Method.DELETE && id) {
-            this.manager.deleteById(domainId!, id)
-                .then(found => this.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
-                .catch(err => this.writeInternalError(res, err))
+        } else if (method === Method.DELETE && hostId) {
+            this.manager.deleteById(domainId, hostId)
+                .then(found => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
+                .catch(err => Utils.writeInternalError(res, err, LOG))
 
-        } else if (method === Method.DELETE && urlName) {
-            this.manager.deleteByName(domainId!, urlName)
-                .then(found => this.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
-                .catch(err => this.writeInternalError(res, err))
+        } else if (method === Method.DELETE && hostName) {
+            this.manager.deleteByName(domainId, hostName)
+                .then(found => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
+                .catch(err => Utils.writeInternalError(res, err, LOG))
 
         } else {
-            this.writeBadRequest(res, new Error('Invalid request'))
+            Utils.writeBadRequest(res, new Error('Invalid request'), LOG)
         }
     }
 
@@ -147,19 +76,19 @@ export class HostController {
         const payload = result.host ? this.sanitizeHost(result.host) : null
         switch (result.status) {
             case SaveStatus.Created:
-                this.writeResponse(response, Status.Created, payload, true)
+                Utils.writeResponse(response, Status.Created, payload, true)
                 break;
             case SaveStatus.Updated:
-                this.writeResponse(response, Status.OK, payload, true)
+                Utils.writeResponse(response, Status.OK, payload, true)
                 break;
             case SaveStatus.Deleted:
-                this.writeResponse(response, Status.OK, null, true)
+                Utils.writeResponse(response, Status.OK, null, true)
                 break;
             case SaveStatus.NotChanged:
-                this.writeResponse(response, Status.OK, payload, false)
+                Utils.writeResponse(response, Status.OK, payload, false)
                 break;
             case SaveStatus.NameConflict:
-                this.writeResponse(response, Status.Conflict, { reason: 'Name already exists' }, false)
+                Utils.writeResponse(response, Status.Conflict, { reason: 'Name already exists' }, false)
                 break;
         }
     }
@@ -172,52 +101,13 @@ export class HostController {
     }
 
     private getValidRequestBody(req: IncomingMessage): Promise<HostDto> {
-        return this.getBody(req).then(body => {
+        return Utils.getBody(req).then(body => {
             if (body.name && body.data) {
                 return validate(body)
             }
             throw new Error('Name and/or data property is missing')
         }).catch(err => Promise.reject(err))
     }
-
-    private getBody(req: IncomingMessage): Promise<Host> {
-        return new Promise((resolve, reject) => {
-            const data: Array<Buffer> = []
-            req.on('data', (chunk: Buffer) => {
-                data.push(chunk)
-            });
-            req.on('end', () => {
-                try {
-                    resolve(JSON.parse(Buffer.concat(data).toString('utf8')))
-                } catch (err) {
-                    reject(err)
-                }
-            });
-        })
-    }
-
-    private writeResponse(res: ServerResponse, status: Status, payload: any, changed: boolean) {
-        res.setHeader('Content-Type', 'application/json')
-        res.setHeader('Host-Changed', String(changed))
-        res.statusCode = status
-        const response = {
-            timestamp: new Date().toISOString(),
-            payload: payload ?? {},
-            changed: changed,
-        }
-        res.end(JSON.stringify(response))
-    }
-
-    private writeBadRequest(res: ServerResponse, err: Error) {
-        LOG.debug('Sent BadRequest error to the client: ', err);
-        this.writeResponse(res, Status.BadRequest, { reason: err.message }, false)
-    }
-
-    private writeInternalError(res: ServerResponse, err: any) {
-        LOG.error('InternalError: ', err);
-        this.writeResponse(res, Status.InternalError, { reason: "Internal server error" }, false)
-    }
-
 }
 
 export default HostController

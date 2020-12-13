@@ -6,18 +6,19 @@ ProcessUtils.initEnvFromDefaultFiles();
 
 import { createRepository as createPgRepository } from "./repositories/pg/PgHostRepository"
 import { createRepository as createMemoryRepository } from "./repositories/memory/MemoryHostRepository"
-import HostController from "./HostController"
+import MainController from "./MainController"
 
 import HTTP = require('http')
-import {IB_LISTEN, IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY} from "./constants/env";
+import { IB_LISTEN, IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY } from "./constants/env";
 import LogService from "./services/LogService";
 import HostRepository from "./types/HostRepository";
 import InventoryRepository from "./types/InventoryRepository";
 import ListenAdapter from "./services/ListenAdapter";
+import HostController from './HostController';
 
 const LOG = LogService.createLogger('server');
 
-function createRepository () : HostRepository {
+function createRepository(): HostRepository {
     switch (IB_REPOSITORY) {
 
         case InventoryRepository.PG:
@@ -34,9 +35,10 @@ function createRepository () : HostRepository {
 
 try {
 
-    const controller = new HostController(createRepository());
+    const hostController = new HostController(createRepository());
+    const mainController = new MainController(hostController);
 
-    const server = HTTP.createServer(controller.requestListener.bind(controller));
+    const server = HTTP.createServer(mainController.requestListener.bind(mainController));
 
     const listenAdapter = new ListenAdapter(server, IB_LISTEN);
 
@@ -46,6 +48,6 @@ try {
 
     listenAdapter.listen();
 
-} catch(err) {
+} catch (err) {
     LOG.error('ERROR: ', err);
 }
