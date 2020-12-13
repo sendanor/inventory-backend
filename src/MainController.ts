@@ -2,19 +2,21 @@
 
 import { IncomingMessage, ServerResponse } from "http"
 import { HostRepository } from "./types/HostRepository"
-import HostManager, { HostSaveResult, SaveStatus } from "./services/HostManager"
 import Host, { HostDto } from './types/Host'
 import validate from './DefaultHostValidator'
 import LogService from "./services/LogService";
 import { IB_DEFAULT_PAGE_SIZE } from "./constants/env";
 import HostController from "./HostController"
+import DomainController from "./DomainController"
 import { DomainRoutePath, RootRoutePath } from './types/Routes'
 import { ControllerUtils as Utils, Request, Method, Status, ResourceType } from './services/ControllerUtils'
+import { DomainDto } from "./types/Domain";
 
 const LOG = LogService.createLogger('HostController');
 
 export default class MainController {
 
+    private domainController: DomainController
     private hostController: HostController
     private domainPattern: RegExp = new RegExp(`${RootRoutePath.DOMAINS}(?:/([^?/]+))?`)
     private hostPattern: RegExp = new RegExp(`${RootRoutePath.DOMAINS}/.*?${DomainRoutePath.HOSTS}(?:/([^?/]+))?`)
@@ -22,25 +24,37 @@ export default class MainController {
     private sizePattern: RegExp = /[?&]size=(\d+)/
     private pagePattern: RegExp = /[?&]page=(\d+)/
 
-    constructor(hostController: HostController) {
+    constructor(domainController: DomainController, hostController: HostController) {
+        this.domainController = domainController
         this.hostController = hostController
     }
 
     public requestListener(msg: IncomingMessage, res: ServerResponse) {
         this.parseRequest(msg)
             .then(request => {
-                console.log(request)
-                const { hostId, hostName, resource } = request
+                const { resource } = request
                 if (resource === ResourceType.Domain) {
-                    // this.hostController.processRequest(msg, res, request)
+                    this.domainController.processRequest(msg, res, request)
                 } else if (resource === ResourceType.Host) {
-                    this.hostController.processRequest(msg, res, request)
-                    // this.writeBadRequest(res, new Error())
+                    this.findDomain(request).then(domain => {
+                        if (domain) {
+                            return this.hostController.processRequest(msg, res, { ...request, domainId: domain.id })
+                        }
+                        Utils.writeResponse(res, Status.NotFound, null, false)
+                    })
                 } else {
                     throw new Error('Invalid request uri')
                 }
             })
             .catch(err => Utils.writeBadRequest(res, err, LOG))
+    }
+
+    private findDomain(request: Request): Promise<DomainDto | undefined> {
+        const { domainId, domainName } = request
+        if (domainId) {
+            return this.domainController.getDomainManager().findById(domainId)
+        }
+        return this.domainController.getDomainManager().findByName(domainName!)
     }
 
     private parseRequest(req: IncomingMessage): Promise<Request> {
@@ -98,7 +112,7 @@ export default class MainController {
         if (match[1].match(idPattern)) {
             return { id: match[1], name: undefined }
         }
-        return { id: undefined, name: match[1] }
+        return { id: undefined, name: decodeURI(match[1]) }
     }
 
     private parsePositiveIntMatch(match: Array<string> | null, defaultValue: number): number {

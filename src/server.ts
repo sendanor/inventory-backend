@@ -4,7 +4,8 @@
 import { ProcessUtils } from './services/ProcessUtils'
 ProcessUtils.initEnvFromDefaultFiles();
 
-import { createRepository as createPgRepository } from "./repositories/pg/PgHostRepository"
+import { createRepository as createPgHostRepository } from "./repositories/pg/PgHostRepository"
+import { createRepository as createPgDomainRepository } from "./repositories/pg/PgDomainRepository"
 import { createRepository as createMemoryRepository } from "./repositories/memory/MemoryHostRepository"
 import MainController from "./MainController"
 
@@ -12,20 +13,23 @@ import HTTP = require('http')
 import { IB_LISTEN, IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY } from "./constants/env";
 import LogService from "./services/LogService";
 import HostRepository from "./types/HostRepository";
+import DomainRepository from "./types/DomainRepository";
 import InventoryRepository from "./types/InventoryRepository";
 import ListenAdapter from "./services/ListenAdapter";
+import DomainController from './DomainController';
 import HostController from './HostController';
 
 const LOG = LogService.createLogger('server');
 
-function createRepository(): HostRepository {
+function createRepository(): { domainRepository: DomainRepository, hostRepository: HostRepository } {
     switch (IB_REPOSITORY) {
 
         case InventoryRepository.PG:
-            return createPgRepository();
+            return { domainRepository: createPgDomainRepository(), hostRepository: createPgHostRepository() }
 
         case InventoryRepository.MEMORY:
-            return createMemoryRepository();
+            return { domainRepository: createPgDomainRepository(), hostRepository: createPgHostRepository() }
+        // return createMemoryRepository();
 
         default:
             throw new TypeError(`Unimplemented inventory repository: ${IB_REPOSITORY}`);
@@ -35,8 +39,10 @@ function createRepository(): HostRepository {
 
 try {
 
-    const hostController = new HostController(createRepository());
-    const mainController = new MainController(hostController);
+    const repositories = createRepository()
+    const domainController = new DomainController(repositories.domainRepository);
+    const hostController = new HostController(repositories.hostRepository);
+    const mainController = new MainController(domainController, hostController);
 
     const server = HTTP.createServer(mainController.requestListener.bind(mainController));
 
