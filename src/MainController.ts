@@ -1,9 +1,6 @@
 // Copyright (c) 2020 Sendanor. All rights reserved.
 
 import { IncomingMessage, ServerResponse } from "http"
-import { HostRepository } from "./types/HostRepository"
-import Host, { HostDto } from './types/Host'
-import validate from './DefaultHostValidator'
 import LogService from "./services/LogService";
 import { IB_DEFAULT_PAGE_SIZE } from "./constants/env";
 import HostController from "./HostController"
@@ -20,7 +17,7 @@ export default class MainController {
     private hostController: HostController
     private domainPattern: RegExp = new RegExp(`${RootRoutePath.DOMAINS}(?:/([^?/]+))?`)
     private hostPattern: RegExp = new RegExp(`${RootRoutePath.DOMAINS}/.*?${DomainRoutePath.HOSTS}(?:/([^?/]+))?`)
-    private paramsPattern: RegExp = new RegExp(`${RootRoutePath.DOMAINS}/.*?(?:/?:${DomainRoutePath.HOSTS}/.*?)?(\\?.*)`)
+    private paramsPattern: RegExp = new RegExp(`${RootRoutePath.DOMAINS}(?:/.*?${DomainRoutePath.HOSTS})?(\\?.*)`)
     private sizePattern: RegExp = /[?&]size=(\d+)/
     private pagePattern: RegExp = /[?&]page=(\d+)/
 
@@ -38,9 +35,10 @@ export default class MainController {
                 } else if (resource === ResourceType.Host) {
                     this.findDomain(request).then(domain => {
                         if (domain) {
-                            return this.hostController.processRequest(msg, res, { ...request, domainId: domain.id })
+                            this.hostController.processRequest(msg, res, { ...request, domainId: domain.id })
+                        } else {
+                            Utils.writeResponse(res, Status.NotFound, null, false)
                         }
-                        Utils.writeResponse(res, Status.NotFound, null, false)
                     })
                 } else {
                     throw new Error('Invalid request uri')

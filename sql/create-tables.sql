@@ -26,21 +26,3 @@ CREATE TABLE hosts(
 
 CREATE UNIQUE INDEX idx_hosts_name
     ON hosts("domainId", name);
-
-INSERT INTO domains VALUES(
-    '11111111-1111-1111-1111-111111111111',
-    'Test domain 1',
-    '{}',
-    CURRENT_TIMESTAMP,
-    NULL,
-    NULL,
-    false);
-
-INSERT INTO domains VALUES(
-    '22222222-2222-2222-2222-222222222222',
-    'Test domain 2',
-    '{}',
-    CURRENT_TIMESTAMP,
-    NULL,
-    NULL,
-    false);

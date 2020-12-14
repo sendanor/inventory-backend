@@ -9,7 +9,7 @@ import { PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER } from "../../constan
 const LOG = LogService.createLogger('PgDomainRepository');
 
 const findById = 'SELECT * FROM domains WHERE id = $1 AND NOT deleted'
-const findByIdAllowDeleted = 'SELECT * FROM domains WHERE AND id = $1'
+const findByIdAllowDeleted = 'SELECT * FROM domains WHERE id = $1'
 const findByName = 'SELECT * FROM domains WHERE name = $1 AND NOT deleted'
 const findByNameAllowDeleted = 'SELECT * FROM domains WHERE name = $1'
 const getPage = 'SELECT * FROM domains WHERE NOT deleted ORDER BY name OFFSET $1 LIMIT $2'

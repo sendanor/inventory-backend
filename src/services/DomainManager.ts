@@ -17,19 +17,17 @@ export default class DomainManager {
     }
 
     public findById(id: string): Promise<DomainDto | undefined> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) =>
             this.repository.findById(id)
                 .then(domain => resolve(domain ? Mapper.toDto(domain) : undefined))
-                .catch(err => reject(err))
-        })
+                .catch(err => reject(err)))
     }
 
     public findByName(name: string): Promise<DomainDto | undefined> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) =>
             this.repository.findByName(name)
                 .then(domain => resolve(domain ? Mapper.toDto(domain) : undefined))
-                .catch(err => reject(err))
-        })
+                .catch(err => reject(err)))
     }
 
     public getPage(page: number, size: number): Promise<PageDto<DomainDto>> {
@@ -48,20 +46,18 @@ export default class DomainManager {
 
     public create(dto: DomainDto): Promise<SaveResult<Domain>> {
         const domain: Domain = { ...dto, createdTime: new Date() }
-        return new Promise((resolve, reject) => {
-            this.validateName(domain).then(valid => {
-                if (!valid) {
-                    return resolve({ status: SaveStatus.NameConflict })
-                }
-                return this.repository.create(domain).then(entity => resolve({ entity, status: SaveStatus.Created }))
-            }).catch(err => reject(err))
-        })
+        return new Promise((resolve, reject) =>
+            this.validateName(domain)
+                .then(valid => valid ?
+                    this.repository.create(domain).then(entity => resolve({ entity, status: SaveStatus.Created })) :
+                    resolve({ status: SaveStatus.NameConflict }))
+                .catch(err => reject(err)))
     }
 
     public saveById(dto: DomainDto): Promise<SaveResult<Domain>> {
         const domain: DomainDto = { ...dto }
         const id = domain.id!
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) =>
             this.repository.findById(id, true).then(current => {
                 if (!current) {
                     return resolve(this.create(domain))
@@ -77,13 +73,12 @@ export default class DomainManager {
                     return this.repository.update(Mapper.toUpdatedDomain(domain, current))
                         .then(entity => resolve({ status, entity }))
                 })
-            }).catch(err => reject(err))
-        })
+            }).catch(err => reject(err)))
     }
 
     public mergeByName(dto: DomainDto): Promise<SaveResult<Domain>> {
         const domain: DomainDto = { ...dto, id: undefined }
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) =>
             this.repository.findByName(domain.name, true).then(current => {
                 if (!current) {
                     return resolve(this.create(domain))
@@ -95,31 +90,29 @@ export default class DomainManager {
                 const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
                 return this.repository.update(Mapper.toUpdatedDomain(merged, current))
                     .then(entity => resolve({ status, entity }))
-            }).catch(err => reject(err))
-        })
+            }).catch(err => reject(err)))
     }
 
     public deleteById(id: string): Promise<boolean> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) =>
             this.repository.delete(id)
                 .then(found => resolve(found))
-                .catch(err => reject(err))
-        })
+                .catch(err => reject(err)))
     }
 
     public deleteByName(name: string): Promise<boolean> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) =>
             this.findByName(name)
                 .then(domain => domain ? this.repository.delete(domain.id!) : false)
                 .then(found => resolve(found))
-                .catch(err => reject(err))
-        })
+                .catch(err => reject(err)))
     }
 
     private validateName(domain: DomainDto): Promise<boolean> {
         const { id, name } = domain
-        return new Promise((resolve, _) => {
-            this.repository.findByName(name, true).then(domain => resolve(!domain || domain.id === id))
-        })
+        return new Promise((resolve, reject) =>
+            this.repository.findByName(name, true)
+                .then(domain => resolve(!domain || domain.id === id))
+                .catch(err => reject(err)))
     }
 }
