@@ -70,7 +70,7 @@ Finnish customers can purchase the support plan from [our webstore](https://nor.
 
 ## Get host
 
-**URL** : `/hosts/:id` or `/hosts/:name`
+**URL** : `/domains/:domainId/hosts/:id` or `/domains/:domainId/hosts/:name`
 
 **Method** : `GET`
 
@@ -100,7 +100,7 @@ Finnish customers can purchase the support plan from [our webstore](https://nor.
 
 ## Get page of hosts
 
-**URL** : `/hosts?page=<page>&size=<size>`
+**URL** : `/domains/:domainId/hosts?page=<page>&size=<size>`
 
 **Method** : `GET`
 
@@ -127,7 +127,7 @@ Finnish customers can purchase the support plan from [our webstore](https://nor.
 
 ## Create host
 
-**URL** : `/hosts`
+**URL** : `/domains/:domainId/hosts`
 
 **Method** : `POST`
 
@@ -167,7 +167,7 @@ Finnish customers can purchase the support plan from [our webstore](https://nor.
 
 ## Update or create host by id
 
-**URL** : `/hosts/:id`
+**URL** : `/domains/:domainId/hosts/:id`
 
 **Method** : `PUT`
 
@@ -211,7 +211,7 @@ Finnish customers can purchase the support plan from [our webstore](https://nor.
 
 **Note**: Only data properties present in request are updated
 
-**URL** : `/hosts`
+**URL** : `/domains/:domainId/hosts/:name`
 
 **Method** : `PATCH`
 
@@ -241,7 +241,7 @@ Finnish customers can purchase the support plan from [our webstore](https://nor.
 
 ## Delete host
 
-**URL** : `/hosts/:id` or `/hosts/:name`
+**URL** : `/domains/:domainId/hosts/:id` or `/domains/:domainId/hosts/:name`
 
 **Method** : `DELETE`
 

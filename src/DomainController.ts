@@ -1,70 +1,74 @@
 // Copyright (c) 2020 Sendanor. All rights reserved.
 
 import { IncomingMessage, ServerResponse } from "http"
-import { HostRepository } from "./types/HostRepository"
-import HostManager from "./services/HostManager"
+import { DomainRepository } from "./types/DomainRepository"
+import DomainManager from "./services/DomainManager"
 import { SaveResult, SaveStatus } from './types/SaveResult'
-import Host, { HostDto } from './types/Host'
-import validate from './DefaultHostValidator'
+import Domain, { DomainDto } from './types/Domain'
+import validate from './DefaultDomainValidator'
 import LogService from "./services/LogService";
 import { ControllerUtils as Utils, Request, Method, Status } from './services/ControllerUtils'
 
-const LOG = LogService.createLogger('HostController');
+const LOG = LogService.createLogger('DomainController');
 
-export class HostController {
+export class DomainController {
 
-    private manager: HostManager
+    private manager: DomainManager
 
-    constructor(repository: HostRepository) {
-        this.manager = new HostManager(repository)
+    constructor(repository: DomainRepository) {
+        this.manager = new DomainManager(repository)
+    }
+
+    public getDomainManager(): DomainManager {
+        return this.manager
     }
 
     public processRequest(req: IncomingMessage, res: ServerResponse, request: Request) {
-        const { method, hostId, domainId, hostName, page, size } = { ...request, domainId: request.domainId! }
+        const { method, domainId, domainName, page, size } = { ...request }
 
-        if (method === Method.GET && hostId) {
-            this.manager.findById(domainId, hostId)
-                .then(host => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
+        if (method === Method.GET && domainId) {
+            this.manager.findById(domainId)
+                .then(domain => Utils.writeResponse(res, domain ? Status.OK : Status.NotFound, domain, false))
                 .catch(err => Utils.writeInternalError(res, err, LOG))
 
-        } else if (method === Method.GET && hostName) {
-            this.manager.findByName(domainId, hostName)
-                .then(host => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
+        } else if (method === Method.GET && domainName) {
+            this.manager.findByName(domainName)
+                .then(domain => Utils.writeResponse(res, domain ? Status.OK : Status.NotFound, domain, false))
                 .catch(err => Utils.writeInternalError(res, err, LOG))
 
         } else if (method === Method.GET && page && size) {
-            this.manager.getPage(domainId, page, size)
+            this.manager.getPage(page, size)
                 .then(page => Utils.writeResponse(res, Status.OK, page, false))
                 .catch(err => Utils.writeInternalError(res, err, LOG))
 
-        } else if (method === Method.POST && !hostId && !hostName) {
+        } else if (method === Method.POST && !domainId && !domainName) {
             this.getValidRequestBody(req)
-                .then(host => this.manager.create({ domainId, name: host.name, data: host.data })
+                .then(domain => this.manager.create({ name: domain.name, data: domain.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => Utils.writeInternalError(res, err, LOG)))
                 .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
 
-        } else if (method === Method.PUT && hostId) {
+        } else if (method === Method.PUT && domainId) {
             this.getValidRequestBody(req)
-                .then(host => this.manager.saveById({ domainId, id: hostId, name: host.name, data: host.data })
+                .then(domain => this.manager.saveById({ id: domainId, name: domain.name, data: domain.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => Utils.writeInternalError(res, err, LOG)))
                 .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
 
-        } else if (method === Method.PATCH && hostName) {
+        } else if (method === Method.PATCH && domainName) {
             this.getValidRequestBody(req)
-                .then(host => this.manager.mergeByName({ domainId, name: hostName, data: host.data })
+                .then(domain => this.manager.mergeByName({ name: domainName, data: domain.data })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => Utils.writeInternalError(res, err, LOG)))
                 .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
 
-        } else if (method === Method.DELETE && hostId) {
-            this.manager.deleteById(domainId, hostId)
+        } else if (method === Method.DELETE && domainId) {
+            this.manager.deleteById(domainId)
                 .then(found => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
                 .catch(err => Utils.writeInternalError(res, err, LOG))
 
-        } else if (method === Method.DELETE && hostName) {
-            this.manager.deleteByName(domainId, hostName)
+        } else if (method === Method.DELETE && domainName) {
+            this.manager.deleteByName(domainName)
                 .then(found => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
                 .catch(err => Utils.writeInternalError(res, err, LOG))
 
@@ -73,8 +77,8 @@ export class HostController {
         }
     }
 
-    private handleSaveResult(result: SaveResult<Host>, response: ServerResponse) {
-        const payload = result.entity ? this.sanitizeHost(result.entity) : null
+    private handleSaveResult(result: SaveResult<Domain>, response: ServerResponse) {
+        const payload = result.entity ? this.sanitizeDomain(result.entity) : null
         switch (result.status) {
             case SaveStatus.Created:
                 Utils.writeResponse(response, Status.Created, payload, true)
@@ -94,14 +98,14 @@ export class HostController {
         }
     }
 
-    private sanitizeHost(host: Host) {
-        const { id, domainId, name, data } = host
+    private sanitizeDomain(domain: Domain) {
+        const { id, name, data } = domain
         return {
-            id, domainId, name, data
+            id, name, data
         };
     }
 
-    private getValidRequestBody(req: IncomingMessage): Promise<HostDto> {
+    private getValidRequestBody(req: IncomingMessage): Promise<DomainDto> {
         return Utils.getBody(req).then(body => {
             if (body.name && body.data) {
                 return validate(body)
@@ -111,4 +115,4 @@ export class HostController {
     }
 }
 
-export default HostController
+export default DomainController

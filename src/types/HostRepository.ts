@@ -28,7 +28,7 @@ export interface HostRepository {
      * @param allowDeleted true, if hosts marked as 'deleted' should be searched also
      * @returns Host, if one was found, undefined otherwise
      */
-    findById(id: string, allowDeleted?: true): Promise<Host | undefined>
+    findById(domainId: string, id: string, allowDeleted?: true): Promise<Host | undefined>
 
     /**
      * Searches for a host by a name
@@ -37,7 +37,7 @@ export interface HostRepository {
      * @param allowDeleted true, if hosts marked as 'deleted' should be searched also
      * @returns Host, if one was found, undefined otherwise
      */
-    findByName(name: string, allowDeleted?: true): Promise<Host | undefined>
+    findByName(domainId: string, name: string, allowDeleted?: true): Promise<Host | undefined>
 
     /**
      * Gets one page of hosts
@@ -46,12 +46,12 @@ export interface HostRepository {
      * @param size page size
      * @returns Page of hosts sorted by name
      */
-    getPage(page: number, size: number): Promise<Host[]>
+    getPage(domainId: string, page: number, size: number): Promise<Host[]>
 
     /**
      * Gets a total count of hosts
      */
-    getCount(): Promise<number>
+    getCount(domainId: string): Promise<number>
 
     /**
      * Creates a new host
@@ -77,8 +77,7 @@ export interface HostRepository {
      * @param id Id of the host to be deleted
      * @returns True, if delete succeeded
      */
-    delete(id: string): Promise<boolean>
-
+    delete(domainId: string, id: string): Promise<boolean>
 }
 
 export default HostRepository;

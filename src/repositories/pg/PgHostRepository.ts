@@ -8,16 +8,16 @@ import { PG_DBNAME, PG_HOST, PG_PASSWORD, PG_PORT, PG_USER } from "../../constan
 
 const LOG = LogService.createLogger('PgHostRepository');
 
-const findById = 'SELECT * FROM hosts WHERE id = $1 AND NOT deleted'
-const findByIdAllowDeleted = 'SELECT * FROM hosts WHERE id = $1'
-const findByName = 'SELECT * FROM hosts WHERE name = $1 AND NOT deleted'
-const findByNameAllowDeleted = 'SELECT * FROM hosts WHERE name = $1'
-const getPage = 'SELECT * FROM hosts WHERE NOT deleted ORDER BY name OFFSET $1 LIMIT $2'
-const totalCount = 'SELECT COUNT(*) FROM hosts WHERE NOT deleted'
-const insert = 'INSERT INTO hosts(name, data, "createdTime") VALUES($1, $2, $3) RETURNING *'
-const insertWithId = 'INSERT INTO hosts(id, name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *'
-const update = 'UPDATE hosts SET name = $2, data = $3, "createdTime" = $4, "modifiedTime" = $5, deleted = $6, "deletedTime" = $7 WHERE id = $1 RETURNING *'
-const remove = 'UPDATE hosts SET deleted = true, "deletedTime" = $2 WHERE id = $1 AND NOT deleted RETURNING *'
+const findById = 'SELECT * FROM hosts WHERE "domainId" = $1 AND id = $2 AND NOT deleted'
+const findByIdAllowDeleted = 'SELECT * FROM hosts WHERE "domainId" = $1 AND id = $2'
+const findByName = 'SELECT * FROM hosts WHERE "domainId" = $1 AND name = $2 AND NOT deleted'
+const findByNameAllowDeleted = 'SELECT * FROM hosts WHERE "domainId" = $1 AND name = $2'
+const getPage = 'SELECT * FROM hosts WHERE "domainId" = $1 AND NOT deleted ORDER BY name OFFSET $2 LIMIT $3'
+const totalCount = 'SELECT COUNT(*) FROM hosts WHERE "domainId" = $1 AND NOT deleted'
+const insert = 'INSERT INTO hosts("domainId", name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *'
+const insertWithId = 'INSERT INTO hosts(id, "domainId", name, data, "createdTime") VALUES($1, $2, $3, $4, $5) RETURNING *'
+const update = 'UPDATE hosts SET name = $3, data = $4, "createdTime" = $5, "modifiedTime" = $6, deleted = $7, "deletedTime" = $8 WHERE "domainId" = $1 AND id = $2 RETURNING *'
+const remove = 'UPDATE hosts SET deleted = true, "deletedTime" = $3 WHERE "domainId" = $1 AND id = $2 AND NOT deleted RETURNING *'
 
 class PgHostRepository implements HostRepository {
     private pool = {} as Pool
@@ -32,44 +32,43 @@ class PgHostRepository implements HostRepository {
         });
     }
 
-    public findById(id: string, allowDeleted?: boolean): Promise<Host | undefined> {
+    public findById(domainId: string, id: string, allowDeleted?: boolean): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
-            this.pool.query(allowDeleted ? findByIdAllowDeleted : findById, [id])
+            this.pool.query(allowDeleted ? findByIdAllowDeleted : findById, [domainId, id])
                 .then(response => resolve(response.rows[0]))
                 .catch(err => reject(err))
         })
     }
 
-    public findByName(name: string, allowDeleted?: boolean): Promise<Host | undefined> {
+    public findByName(domainId: string, name: string, allowDeleted?: boolean): Promise<Host | undefined> {
         return new Promise((resolve, reject) => {
-            this.pool.query(allowDeleted ? findByNameAllowDeleted : findByName, [name])
+            this.pool.query(allowDeleted ? findByNameAllowDeleted : findByName, [domainId, name])
                 .then(response => resolve(response.rows[0]))
                 .catch(err => reject(err))
         })
     }
 
-    public getPage(page: number, size: number): Promise<Host[]> {
+    public getPage(domainId: string, page: number, size: number): Promise<Host[]> {
         return new Promise((resolve, reject) => {
-            this.pool.query(getPage, [(page - 1) * size, size])
+            this.pool.query(getPage, [domainId, (page - 1) * size, size])
                 .then(response => resolve(response.rows))
                 .catch(err => reject(err))
         })
     }
 
-    public getCount(): Promise<number> {
+    public getCount(domainId: string): Promise<number> {
         return new Promise((resolve, reject) => {
-            this.pool.query(totalCount, [])
+            this.pool.query(totalCount, [domainId])
                 .then(response => resolve(response.rows[0].count))
                 .catch(err => reject(err))
         })
     }
 
     public create(host: Host): Promise<Host> {
-        const newHost = { ...host }
-        const id = newHost.id
+        const { id, domainId, name, data, createdTime } = host
         return new Promise((resolve, reject) => {
             const idArr: any[] = id ? [id] : []
-            const params = idArr.concat(newHost.name, newHost.data, newHost.createdTime)
+            const params = idArr.concat(domainId, name, data, createdTime)
             this.pool.query(id ? insertWithId : insert, params)
                 .then(response => resolve(response.rows[0]))
                 .catch(err => reject(err))
@@ -77,18 +76,18 @@ class PgHostRepository implements HostRepository {
     }
 
     public update(host: Host): Promise<Host> {
-        const newHost = { ...host }
+        const { id, domainId, name, data, createdTime, modifiedTime, deleted, deletedTime } = host
         return new Promise((resolve, reject) => {
-            const params = [newHost.id, newHost.name, newHost.data, newHost.createdTime, newHost.modifiedTime, newHost.deleted, newHost.deletedTime]
+            const params = [domainId, id!, name, data, createdTime, modifiedTime, deleted, deletedTime]
             this.pool.query(update, params)
                 .then(response => resolve(response.rows[0]))
                 .catch(err => reject(err))
         })
     }
 
-    public delete(id: string): Promise<boolean> {
+    public delete(domainId: string, id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
-            this.pool.query(remove, [id, new Date()])
+            this.pool.query(remove, [domainId, id, new Date()])
                 .then(response => resolve(response.rowCount === 1))
                 .catch(err => reject(err))
         })
