@@ -6,7 +6,8 @@ ProcessUtils.initEnvFromDefaultFiles();
 
 import { createRepository as createPgHostRepository } from "./repositories/pg/PgHostRepository"
 import { createRepository as createPgDomainRepository } from "./repositories/pg/PgDomainRepository"
-import { createRepository as createMemoryRepository } from "./repositories/memory/MemoryHostRepository"
+import { createRepository as createMemoryDomainRepository } from "./repositories/memory/MemoryDomainRepository"
+import { createRepository as createMemoryHostRepository } from "./repositories/memory/MemoryHostRepository"
 import MainController from "./MainController"
 
 import HTTP = require('http')
@@ -28,8 +29,7 @@ function createRepository(): { domainRepository: DomainRepository, hostRepositor
             return { domainRepository: createPgDomainRepository(), hostRepository: createPgHostRepository() }
 
         case InventoryRepository.MEMORY:
-            return { domainRepository: createPgDomainRepository(), hostRepository: createPgHostRepository() }
-        // return createMemoryRepository();
+            return { domainRepository: createMemoryDomainRepository(), hostRepository: createMemoryHostRepository() }
 
         default:
             throw new TypeError(`Unimplemented inventory repository: ${IB_REPOSITORY}`);
