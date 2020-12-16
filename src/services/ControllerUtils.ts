@@ -40,7 +40,7 @@ class ControllerUtils {
 
     static writeResponse(res: ServerResponse, status: Status, payload: any, changed: boolean) {
         res.setHeader('Content-Type', 'application/json')
-        res.setHeader('Host-Changed', String(changed))
+        res.setHeader('Content-Changed', String(changed))
         res.statusCode = status
         const response = {
             timestamp: new Date().toISOString(),
