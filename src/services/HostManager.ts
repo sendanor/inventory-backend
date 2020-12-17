@@ -83,13 +83,16 @@ export default class HostManager {
                 if (!current) {
                     return resolve(this.create(host))
                 }
+                if (current.deleted) {
+                    return this.repository.update(Mapper.toUpdatedHost({ ...host }, current))
+                        .then(entity => resolve({ status: SaveStatus.Created, entity }))
+                }
                 const merged = { ...host, data: merge({}, current.data, host.data) }
-                if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), merged)) {
+                if (HostUtils.areEqualHostDtos(Mapper.toDto(current), merged)) {
                     return resolve({ entity: current, status: SaveStatus.NotChanged })
                 }
-                const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
                 return this.repository.update(Mapper.toUpdatedHost(merged, current))
-                    .then(entity => resolve({ status, entity }))
+                    .then(entity => resolve({ status: SaveStatus.Updated, entity }))
             }).catch(err => reject(err)))
     }
 

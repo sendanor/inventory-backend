@@ -83,13 +83,16 @@ export default class DomainManager {
                 if (!current) {
                     return resolve(this.create(domain))
                 }
+                if (current.deleted) {
+                    return this.repository.update(Mapper.toUpdatedDomain({ ...domain }, current))
+                        .then(entity => resolve({ status: SaveStatus.Created, entity }))
+                }
                 const merged = { ...domain, data: merge({}, current.data, domain.data) }
-                if (!current.deleted && DomainUtils.areEqualDomainDtos(Mapper.toDto(current), merged)) {
+                if (DomainUtils.areEqualDomainDtos(Mapper.toDto(current), merged)) {
                     return resolve({ entity: current, status: SaveStatus.NotChanged })
                 }
-                const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated
                 return this.repository.update(Mapper.toUpdatedDomain(merged, current))
-                    .then(entity => resolve({ status, entity }))
+                    .then(entity => resolve({ status: SaveStatus.Updated, entity }))
             }).catch(err => reject(err)))
     }
 
