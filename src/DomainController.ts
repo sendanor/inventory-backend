@@ -55,9 +55,16 @@ export class DomainController {
                     .catch(err => Utils.writeInternalError(res, err, LOG)))
                 .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
 
+        } else if (method === Method.PATCH && domainId) {
+            this.getValidRequestBody(req)
+                .then(domain => this.manager.mergeById(domainId, { ...domain })
+                    .then(result => this.handleSaveResult(result, res))
+                    .catch(err => Utils.writeInternalError(res, err, LOG)))
+                .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
+
         } else if (method === Method.PATCH && domainName) {
             this.getValidRequestBody(req)
-                .then(domain => this.manager.mergeByName({ name: domainName, data: domain.data })
+                .then(domain => this.manager.mergeByName(domainName, { ...domain })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => Utils.writeInternalError(res, err, LOG)))
                 .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))

@@ -76,24 +76,16 @@ export default class HostManager {
             }).catch(err => reject(err)))
     }
 
-    public mergeByName(dto: HostDto): Promise<SaveResult<Host>> {
-        const host: HostDto = { ...dto, id: undefined }
-        return new Promise((resolve, reject) =>
-            this.repository.findByName(host.domainId, host.name, true).then(current => {
-                if (!current) {
-                    return resolve(this.create(host))
-                }
-                if (current.deleted) {
-                    return this.repository.update(Mapper.toUpdatedHost({ ...host }, current))
-                        .then(entity => resolve({ status: SaveStatus.Created, entity }))
-                }
-                const merged = { ...host, data: merge({}, current.data, host.data) }
-                if (HostUtils.areEqualHostDtos(Mapper.toDto(current), merged)) {
-                    return resolve({ entity: current, status: SaveStatus.NotChanged })
-                }
-                return this.repository.update(Mapper.toUpdatedHost(merged, current))
-                    .then(entity => resolve({ status: SaveStatus.Updated, entity }))
-            }).catch(err => reject(err)))
+    public mergeById(id: string, dto: HostDto): Promise<SaveResult<Host>> {
+        const host: HostDto = { ...dto, id }
+        return this.repository.findById(host.domainId, id, true)
+            .then(current => this.merge(host, current))
+    }
+
+    public mergeByName(name: string, dto: HostDto): Promise<SaveResult<Host>> {
+        const host: HostDto = { ...dto }
+        return this.repository.findByName(host.domainId, name, true)
+            .then(current => this.merge(host, current))
     }
 
     public deleteById(domainId: string, id: string): Promise<boolean> {
@@ -109,6 +101,29 @@ export default class HostManager {
                 .then(host => host ? this.repository.delete(domainId, host.id!) : false)
                 .then(found => resolve(found))
                 .catch(err => reject(err)))
+    }
+
+    private merge(dto: HostDto, current?: Host): Promise<SaveResult<Host>> {
+        if (!current) {
+            return this.create(dto)
+        }
+        const merged = { ...dto, id: current.id, data: merge({}, current.data, dto.data) }
+        if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), merged)) {
+            return Promise.resolve({ entity: current, status: SaveStatus.NotChanged })
+        }
+        return this.validateName(merged).then(valid => {
+            if (!valid) {
+                return Promise.resolve({ status: SaveStatus.NameConflict } as SaveResult<Host>)
+            }
+            if (current.deleted) {
+                return this.repository.update(Mapper.toUpdatedHost({ ...dto }, current))
+                    .then(entity => Promise.resolve({ entity, status: SaveStatus.Created }))
+                    .catch(err => Promise.reject(err))
+            }
+            return this.repository.update(Mapper.toUpdatedHost(merged, current))
+                .then(entity => Promise.resolve({ entity, status: SaveStatus.Updated }))
+                .catch(err => Promise.reject(err))
+        })
     }
 
     private validateName(host: HostDto): Promise<boolean> {

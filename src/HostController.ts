@@ -51,9 +51,16 @@ export class HostController {
                     .catch(err => Utils.writeInternalError(res, err, LOG)))
                 .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
 
+        } else if (method === Method.PATCH && hostId) {
+            this.getValidRequestBody(req)
+                .then(host => this.manager.mergeById(hostId, { ...host, domainId })
+                    .then(result => this.handleSaveResult(result, res))
+                    .catch(err => Utils.writeInternalError(res, err, LOG)))
+                .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
+
         } else if (method === Method.PATCH && hostName) {
             this.getValidRequestBody(req)
-                .then(host => this.manager.mergeByName({ domainId, name: hostName, data: host.data })
+                .then(host => this.manager.mergeByName(hostName, { ...host, domainId })
                     .then(result => this.handleSaveResult(result, res))
                     .catch(err => Utils.writeInternalError(res, err, LOG)))
                 .catch(err => Utils.writeResponse(res, Status.BadRequest, err.message, false))
