@@ -25,6 +25,7 @@
     "reason": "Invalid request"
 }
 ```
+
 **Code** : `500 Internal Server Error`, if unknown server error occurs
 
 **Content**
@@ -108,6 +109,7 @@
     "data": {...}
 }
 ```
+
 ### Success Responses
 
 **Code** : `201 CREATED`, if domain did not exist and was created
@@ -148,6 +150,7 @@
     "data": {...}
 }
 ```
+
 ### Success Responses
 
 **Code** : `200 OK`, if domain was updated or was already up-to-date
@@ -192,6 +195,7 @@
     "data": {...}
 }
 ```
+
 ### Success Responses
 
 **Code** : `200 OK`, if domain was updated or was already up-to-date
@@ -232,4 +236,14 @@
 
 ```json
 "payload": {}
+```
+
+**Code** : `409 Conflict`, if domain has hosts.
+
+**Content**
+
+```json
+"payload": {
+    "reason": "Domain having hosts cannot be removed"
+}
 ```
