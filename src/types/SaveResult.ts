@@ -6,9 +6,11 @@ export enum SaveStatus {
     Deleted,
     NotChanged,
     NameConflict,
+    NotDeletable,
+    NotFound,
 }
 
 export interface SaveResult<T> {
-    entity?: T
-    status: SaveStatus
+    entity?: T;
+    status: SaveStatus;
 }

@@ -13,15 +13,14 @@ import MainController from "./MainController";
 import HTTP = require("http");
 import { IB_LISTEN, IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY } from "./constants/env";
 import LogService from "./services/LogService";
-import HostRepository from "./types/HostRepository";
-import DomainRepository from "./types/DomainRepository";
 import InventoryRepository from "./types/InventoryRepository";
 import ListenAdapter from "./services/ListenAdapter";
 import DomainController from "./DomainController";
 import HostController from "./HostController";
 import DomainRepositoryAdapter from "./repositories/DomainRepositoryAdapter";
 import HostRepositoryAdapter from "./repositories/HostRepositoryAdapter";
-import { RepositoryEvent } from "./types/ObservableRepository";
+import DomainManager from "./services/DomainManager";
+import HostManager from "./services/HostManager";
 
 const LOG = LogService.createLogger("server");
 
@@ -45,9 +44,11 @@ function createRepositories(): { domainRepository: DomainRepositoryAdapter; host
 }
 
 try {
-    const repositories = createRepositories();
-    const domainController = new DomainController(repositories.domainRepository);
-    const hostController = new HostController(repositories.hostRepository);
+    const { domainRepository, hostRepository } = createRepositories();
+    const domainManager = new DomainManager(domainRepository, hostRepository);
+    const hostManager = new HostManager(hostRepository);
+    const domainController = new DomainController(domainManager);
+    const hostController = new HostController(hostManager);
     const mainController = new MainController(domainController, hostController);
 
     const server = HTTP.createServer(mainController.requestListener.bind(mainController));

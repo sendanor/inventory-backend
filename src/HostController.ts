@@ -14,8 +14,8 @@ const LOG = LogService.createLogger("HostController");
 export class HostController {
     private manager: HostManager;
 
-    constructor(repository: HostRepository) {
-        this.manager = new HostManager(repository);
+    constructor(manager: HostManager) {
+        this.manager = manager;
     }
 
     public processRequest(msg: IncomingMessage, res: ServerResponse, request: Request) {
@@ -125,18 +125,18 @@ export class HostController {
     private processDelete(res: ServerResponse, request: Request) {
         const { hostId, domainId, hostName } = { ...request, domainId: request.domainId! };
         if (hostId) {
-            this.manager
-                .deleteById(domainId, hostId)
-                .then((found) => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
-                .catch((err) => Utils.writeInternalError(res, err, LOG));
+            this.handleDeleteResult(res, this.manager.deleteById(domainId, hostId));
         } else if (hostName) {
-            this.manager
-                .deleteByName(domainId, hostName)
-                .then((found) => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
-                .catch((err) => Utils.writeInternalError(res, err, LOG));
+            this.handleDeleteResult(res, this.manager.deleteByName(domainId, hostName));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name is required as a DELETE parameter"), LOG);
         }
+    }
+
+    private handleDeleteResult(res: ServerResponse, promise: Promise<boolean>) {
+        promise
+            .then((found) => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
+            .catch((err) => Utils.writeInternalError(res, err, LOG));
     }
 
     private handleSaveResult(result: SaveResult<Host>, response: ServerResponse) {

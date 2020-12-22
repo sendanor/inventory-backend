@@ -14,8 +14,8 @@ const LOG = LogService.createLogger("DomainController");
 export class DomainController {
     private manager: DomainManager;
 
-    constructor(repository: DomainRepository) {
-        this.manager = new DomainManager(repository);
+    constructor(manager: DomainManager) {
+        this.manager = manager;
     }
 
     public getDomainManager(): DomainManager {
@@ -129,18 +129,27 @@ export class DomainController {
     private processDelete(res: ServerResponse, request: Request) {
         const { domainId, domainName } = { ...request };
         if (domainId) {
-            this.manager
-                .deleteById(domainId)
-                .then((found) => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
-                .catch((err) => Utils.writeInternalError(res, err, LOG));
+            this.handleDeleteResult(res, this.manager.deleteById(domainId));
         } else if (domainName) {
-            this.manager
-                .deleteByName(domainName)
-                .then((found) => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
-                .catch((err) => Utils.writeInternalError(res, err, LOG));
+            this.handleDeleteResult(res, this.manager.deleteByName(domainName));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name is required as a DELETE parameter"), LOG);
         }
+    }
+
+    private handleDeleteResult(res: ServerResponse, promise: Promise<SaveResult<Domain>>) {
+        promise
+            .then((result) => {
+                const status =
+                    result.status === SaveStatus.Deleted
+                        ? Status.OK
+                        : result.status === SaveStatus.NotDeletable
+                        ? Status.Conflict
+                        : Status.NotFound;
+                const changed = result.status === SaveStatus.Deleted;
+                Utils.writeResponse(res, status, { reason: "Domain having hosts cannot be removed" }, changed);
+            })
+            .catch((err) => Utils.writeInternalError(res, err, LOG));
     }
 
     private handleSaveResult(result: SaveResult<Domain>, response: ServerResponse) {
