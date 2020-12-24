@@ -49,20 +49,22 @@ export default class DomainManager {
         });
     }
 
-    public create(dto: DomainDto): Promise<SaveResult<Domain>> {
+    public create(dto: DomainDto): Promise<SaveResult<DomainDto>> {
         const domain: Domain = { ...dto, createdTime: new Date() };
         return new Promise((resolve, reject) =>
             this.validateName(domain)
                 .then((valid) =>
                     valid
-                        ? this.repository.create(domain).then((entity) => resolve({ entity, status: SaveStatus.Created }))
+                        ? this.repository
+                              .create(domain)
+                              .then((domain) => resolve({ dto: Mapper.toDto(domain), status: SaveStatus.Created }))
                         : resolve({ status: SaveStatus.NameConflict })
                 )
                 .catch((err) => reject(err))
         );
     }
 
-    public saveById(dto: DomainDto): Promise<SaveResult<Domain>> {
+    public saveById(dto: DomainDto): Promise<SaveResult<DomainDto>> {
         const domain: DomainDto = { ...dto };
         const id = domain.id!;
         return new Promise((resolve, reject) =>
@@ -73,7 +75,7 @@ export default class DomainManager {
                         return resolve(this.create(domain));
                     }
                     if (!current.deleted && DomainUtils.areEqualDomainDtos(Mapper.toDto(current), domain)) {
-                        return resolve({ entity: current, status: SaveStatus.NotChanged });
+                        return resolve({ dto: Mapper.toDto(current), status: SaveStatus.NotChanged });
                     }
                     return this.validateName(domain).then((valid) => {
                         if (!valid) {
@@ -82,24 +84,24 @@ export default class DomainManager {
                         const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated;
                         return this.repository
                             .update(Mapper.toUpdatedDomain(domain, current))
-                            .then((entity) => resolve({ status, entity }));
+                            .then((domain) => resolve({ status, dto: Mapper.toDto(domain) }));
                     });
                 })
                 .catch((err) => reject(err))
         );
     }
 
-    public mergeById(id: string, dto: DomainDto): Promise<SaveResult<Domain>> {
+    public mergeById(id: string, dto: DomainDto): Promise<SaveResult<DomainDto>> {
         const domain: DomainDto = { ...dto, id };
         return this.repository.findById(id, true).then((current) => this.merge(domain, current));
     }
 
-    public mergeByName(name: string, dto: DomainDto): Promise<SaveResult<Domain>> {
+    public mergeByName(name: string, dto: DomainDto): Promise<SaveResult<DomainDto>> {
         const domain: DomainDto = { ...dto };
         return this.repository.findByName(name, true).then((current) => this.merge(domain, current));
     }
 
-    public deleteById(id: string): Promise<SaveResult<Domain>> {
+    public deleteById(id: string): Promise<SaveResult<DomainDto>> {
         return this.hostRepository.getCount(id).then((count) => {
             if (count > 0) {
                 return Promise.resolve({ status: SaveStatus.NotDeletable });
@@ -107,38 +109,38 @@ export default class DomainManager {
             return this.repository
                 .delete(id)
                 .then((found) =>
-                    Promise.resolve({ status: found ? SaveStatus.Deleted : SaveStatus.NotFound } as SaveResult<Domain>)
+                    Promise.resolve({ status: found ? SaveStatus.Deleted : SaveStatus.NotFound } as SaveResult<DomainDto>)
                 );
         });
     }
 
-    public deleteByName(name: string): Promise<SaveResult<Domain>> {
+    public deleteByName(name: string): Promise<SaveResult<DomainDto>> {
         return this.findByName(name).then((domain) =>
             domain ? this.deleteById(domain.id!) : Promise.resolve({ status: SaveStatus.NotFound })
         );
     }
 
-    private merge(dto: DomainDto, current?: Domain): Promise<SaveResult<Domain>> {
+    private merge(dto: DomainDto, current?: Domain): Promise<SaveResult<DomainDto>> {
         if (!current) {
             return this.create(dto);
         }
         const merged = { ...dto, id: current.id, data: merge({}, current.data, dto.data) };
         if (!current.deleted && DomainUtils.areEqualDomainDtos(Mapper.toDto(current), merged)) {
-            return Promise.resolve({ entity: current, status: SaveStatus.NotChanged });
+            return Promise.resolve({ dto: Mapper.toDto(current), status: SaveStatus.NotChanged });
         }
         return this.validateName(merged).then((valid) => {
             if (!valid) {
-                return Promise.resolve({ status: SaveStatus.NameConflict } as SaveResult<Domain>);
+                return Promise.resolve({ status: SaveStatus.NameConflict } as SaveResult<DomainDto>);
             }
             if (current.deleted) {
                 return this.repository
                     .update(Mapper.toUpdatedDomain({ ...dto }, current))
-                    .then((entity) => Promise.resolve({ entity, status: SaveStatus.Created }))
+                    .then((domain) => Promise.resolve({ dto: Mapper.toDto(domain), status: SaveStatus.Created }))
                     .catch((err) => Promise.reject(err));
             }
             return this.repository
                 .update(Mapper.toUpdatedDomain(merged, current))
-                .then((entity) => Promise.resolve({ entity, status: SaveStatus.Updated }))
+                .then((domain) => Promise.resolve({ dto: Mapper.toDto(domain), status: SaveStatus.Updated }))
                 .catch((err) => Promise.reject(err));
         });
     }

@@ -11,6 +11,6 @@ export enum SaveStatus {
 }
 
 export interface SaveResult<T> {
-    entity?: T;
+    dto?: T;
     status: SaveStatus;
 }

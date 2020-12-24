@@ -12,3 +12,6 @@ export enum DomainRoutePath {
     HOSTS = "/hosts",
     GROUPS = "/groups",
 }
+
+export const SIZE_PARAM_NAME = "size";
+export const PAGE_PARAM_NAME = "page";

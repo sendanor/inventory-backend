@@ -8,9 +8,9 @@
 
 ```json
 {
-    "timestamp": <timestamp of the response in ISO-8601 format>
-    "changed": <true | false>,
-    "payload": ...
+    "timestamp": "<timestamp of the response in ISO-8601 format>",
+    "changed": "<true | false>",
+    "payload": "{...}"
 }
 ```
 
@@ -25,6 +25,7 @@
     "reason": "Invalid request"
 }
 ```
+
 **Code** : `500 Internal Server Error`, if unknown server error occurs
 
 **Content**
@@ -49,9 +50,10 @@
 
 ```json
 "payload": {
-    "id": <id>,
+    "id": "<id>",
     "name": "Host name",
-    "data": {...}
+    "data": "{...}",
+    "url": "<resource url>"
 }
 ```
 
@@ -81,16 +83,23 @@
 "payload": {
     "hosts": [
         {
-            "id": <id>,
+            "id": "<id>",
             "name": "Host name 1",
-            "data": {...}
+            "data": "{...}",
+            "url": "<resource url>",
         },
-        ...
+        {
+            "id": "<id>",
+            "name": "Host name n",
+            "data": "{...}",
+            "url": "<resource url>",
+        },
     ],
-    "pageNumber": <current page number>,
-    "pageSize": <requested page size>,
-    "totalCount": <total number of hosts>,
-    "pageCount": <total number of pages>
+    "pageNumber": "<current page number>",
+    "pageSize": "<requested page size>",
+    "totalCount": "<total number of hosts>",
+    "pageCount": "<total number of pages>",
+    "url": "<page url>",
 }
 ```
 
@@ -105,9 +114,10 @@
 ```json
 {
     "name": "Host name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
+
 ### Success Responses
 
 **Code** : `201 CREATED`, if host did not exist and was created
@@ -116,9 +126,9 @@
 
 ```json
 "payload": {
-    "id": <id>
+    "id": "<id>",
     "name": "Host name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 
@@ -145,9 +155,10 @@
 ```json
 {
     "name": "Host name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
+
 ### Success Responses
 
 **Code** : `200 OK`, if host was updated or was already up-to-date
@@ -158,9 +169,9 @@
 
 ```json
 "payload": {
-    "id": <id>
+    "id": "<id>",
     "name": "Host name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 
@@ -189,9 +200,10 @@
 ```json
 {
     "name": "Host name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
+
 ### Success Responses
 
 **Code** : `200 OK`, if host was updated or was already up-to-date
@@ -202,9 +214,9 @@
 
 ```json
 "payload": {
-    "id": <id>
+    "id": "<id>",
     "name": "Host name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 

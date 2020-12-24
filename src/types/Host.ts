@@ -16,4 +16,5 @@ export interface HostDto {
     domainId: string;
     name: string;
     data: any;
+    url?: string;
 }

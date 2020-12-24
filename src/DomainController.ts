@@ -1,13 +1,15 @@
 // Copyright (c) 2020 Sendanor. All rights reserved.
 
 import { IncomingMessage, ServerResponse } from "http";
-import { DomainRepository } from "./types/DomainRepository";
 import DomainManager from "./services/DomainManager";
 import { SaveResult, SaveStatus } from "./types/SaveResult";
-import Domain, { DomainDto } from "./types/Domain";
+import { DomainDto } from "./types/Domain";
 import validate from "./DefaultDomainValidator";
 import LogService from "./services/LogService";
 import { ControllerUtils as Utils, Request, Method, Status } from "./services/ControllerUtils";
+import { IB_LISTEN } from "./constants/env";
+import { PAGE_PARAM_NAME, RootRoutePath, SIZE_PARAM_NAME } from "./types/Routes";
+import PageDto from "./types/PageDto";
 
 const LOG = LogService.createLogger("DomainController");
 
@@ -52,17 +54,21 @@ export class DomainController {
         if (domainId) {
             this.manager
                 .findById(domainId)
-                .then((domain) => Utils.writeResponse(res, domain ? Status.OK : Status.NotFound, domain, false))
+                .then((domain) =>
+                    Utils.writeResponse(res, domain ? Status.OK : Status.NotFound, domain && this.withUrl(domain), false)
+                )
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else if (domainName) {
             this.manager
                 .findByName(domainName)
-                .then((domain) => Utils.writeResponse(res, domain ? Status.OK : Status.NotFound, domain, false))
+                .then((domain) =>
+                    Utils.writeResponse(res, domain ? Status.OK : Status.NotFound, domain && this.withUrl(domain), false)
+                )
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else if (page && size) {
             this.manager
                 .getPage(page, size)
-                .then((page) => Utils.writeResponse(res, Status.OK, page, false))
+                .then((page) => Utils.writeResponse(res, Status.OK, this.pageWithUrl(page, request), false))
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name or paging is required as GET parameters"), LOG);
@@ -79,7 +85,7 @@ export class DomainController {
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
-                .catch((err) => Utils.writeResponse(res, Status.BadRequest, err.message, false));
+                .catch((err) => Utils.writeBadRequest(res, err, LOG));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name is not allowed as a POST parameter"), LOG);
         }
@@ -95,7 +101,7 @@ export class DomainController {
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
-                .catch((err) => Utils.writeResponse(res, Status.BadRequest, err.message, false));
+                .catch((err) => Utils.writeBadRequest(res, err, LOG));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId is required as a PUT parameter"), LOG);
         }
@@ -111,7 +117,7 @@ export class DomainController {
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
-                .catch((err) => Utils.writeResponse(res, Status.BadRequest, err.message, false));
+                .catch((err) => Utils.writeBadRequest(res, err, LOG));
         } else if (domainName) {
             this.getValidRequestBody(msg)
                 .then((domain) =>
@@ -120,7 +126,7 @@ export class DomainController {
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
-                .catch((err) => Utils.writeResponse(res, Status.BadRequest, err.message, false));
+                .catch((err) => Utils.writeBadRequest(res, err, LOG));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name is required as a PATCH parameter"), LOG);
         }
@@ -137,7 +143,7 @@ export class DomainController {
         }
     }
 
-    private handleDeleteResult(res: ServerResponse, promise: Promise<SaveResult<Domain>>) {
+    private handleDeleteResult(res: ServerResponse, promise: Promise<SaveResult<DomainDto>>) {
         promise
             .then((result) => {
                 const status =
@@ -152,8 +158,8 @@ export class DomainController {
             .catch((err) => Utils.writeInternalError(res, err, LOG));
     }
 
-    private handleSaveResult(result: SaveResult<Domain>, response: ServerResponse) {
-        const payload = result.entity ? this.sanitizeDomain(result.entity) : null;
+    private handleSaveResult(result: SaveResult<DomainDto>, response: ServerResponse) {
+        const payload = result.dto ? this.withUrl(result.dto) : null;
         switch (result.status) {
             case SaveStatus.Created:
                 Utils.writeResponse(response, Status.Created, payload, true);
@@ -173,15 +179,6 @@ export class DomainController {
         }
     }
 
-    private sanitizeDomain(domain: Domain) {
-        const { id, name, data } = domain;
-        return {
-            id,
-            name,
-            data,
-        };
-    }
-
     private getValidRequestBody(req: IncomingMessage): Promise<DomainDto> {
         return Utils.getBody(req)
             .then((body) => {
@@ -191,6 +188,23 @@ export class DomainController {
                 throw new Error("Name and/or data property is missing");
             })
             .catch((err) => Promise.reject(err));
+    }
+
+    private withUrl(domain: DomainDto): DomainDto {
+        return {
+            ...domain,
+            url: `${IB_LISTEN}${RootRoutePath.DOMAINS}/${domain.id}`,
+        };
+    }
+
+    private pageWithUrl(domains: PageDto<DomainDto>, request: Request): PageDto<DomainDto> {
+        const { domainId, page, size } = request;
+        const domainsWithUrl = domains.entities.map((domain) => this.withUrl(domain));
+        return {
+            ...domains,
+            entities: domainsWithUrl,
+            url: `${IB_LISTEN}${RootRoutePath.DOMAINS}?${PAGE_PARAM_NAME}=${page}&${SIZE_PARAM_NAME}=${size}`,
+        };
     }
 }
 

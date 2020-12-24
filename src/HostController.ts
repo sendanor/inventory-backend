@@ -1,13 +1,15 @@
 // Copyright (c) 2020 Sendanor. All rights reserved.
 
+import { IB_LISTEN } from "./constants/env";
 import { IncomingMessage, ServerResponse } from "http";
-import { HostRepository } from "./types/HostRepository";
 import HostManager from "./services/HostManager";
 import { SaveResult, SaveStatus } from "./types/SaveResult";
-import Host, { HostDto } from "./types/Host";
+import { HostDto } from "./types/Host";
 import validate from "./DefaultHostValidator";
 import LogService from "./services/LogService";
 import { ControllerUtils as Utils, Request, Method, Status } from "./services/ControllerUtils";
+import { DomainRoutePath, PAGE_PARAM_NAME, RootRoutePath, SIZE_PARAM_NAME } from "./types/Routes";
+import PageDto from "./types/PageDto";
 
 const LOG = LogService.createLogger("HostController");
 
@@ -48,17 +50,17 @@ export class HostController {
         if (hostId) {
             this.manager
                 .findById(domainId, hostId)
-                .then((host) => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
+                .then((host) => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host && this.withUrl(host), false))
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else if (hostName) {
             this.manager
                 .findByName(domainId, hostName)
-                .then((host) => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host, false))
+                .then((host) => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host && this.withUrl(host), false))
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else if (page && size) {
             this.manager
                 .getPage(domainId, page, size)
-                .then((page) => Utils.writeResponse(res, Status.OK, page, false))
+                .then((page) => Utils.writeResponse(res, Status.OK, this.pageWithUrl(page, request), false))
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name or paging is required as GET parameters"), LOG);
@@ -75,7 +77,7 @@ export class HostController {
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
-                .catch((err) => Utils.writeResponse(res, Status.BadRequest, err.message, false));
+                .catch((err) => Utils.writeBadRequest(res, err, LOG));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name is not allowed as a POST parameter"), LOG);
         }
@@ -91,7 +93,7 @@ export class HostController {
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
-                .catch((err) => Utils.writeResponse(res, Status.BadRequest, err.message, false));
+                .catch((err) => Utils.writeBadRequest(res, err, LOG));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId is required as a PUT parameter"), LOG);
         }
@@ -107,7 +109,7 @@ export class HostController {
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
-                .catch((err) => Utils.writeResponse(res, Status.BadRequest, err.message, false));
+                .catch((err) => Utils.writeBadRequest(res, err, LOG));
         } else if (hostName) {
             this.getValidRequestBody(msg)
                 .then((host) =>
@@ -116,7 +118,7 @@ export class HostController {
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
-                .catch((err) => Utils.writeResponse(res, Status.BadRequest, err.message, false));
+                .catch((err) => Utils.writeBadRequest(res, err, LOG));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name is required as a PATCH parameter"), LOG);
         }
@@ -139,8 +141,8 @@ export class HostController {
             .catch((err) => Utils.writeInternalError(res, err, LOG));
     }
 
-    private handleSaveResult(result: SaveResult<Host>, response: ServerResponse) {
-        const payload = result.entity ? this.sanitizeHost(result.entity) : null;
+    private handleSaveResult(result: SaveResult<HostDto>, response: ServerResponse) {
+        const payload = result.dto ? this.withUrl(result.dto) : null;
         switch (result.status) {
             case SaveStatus.Created:
                 Utils.writeResponse(response, Status.Created, payload, true);
@@ -160,16 +162,6 @@ export class HostController {
         }
     }
 
-    private sanitizeHost(host: Host) {
-        const { id, domainId, name, data } = host;
-        return {
-            id,
-            domainId,
-            name,
-            data,
-        };
-    }
-
     private getValidRequestBody(req: IncomingMessage): Promise<HostDto> {
         return Utils.getBody(req)
             .then((body) => {
@@ -179,6 +171,25 @@ export class HostController {
                 throw new Error("Name and/or data property is missing");
             })
             .catch((err) => Promise.reject(err));
+    }
+
+    private withUrl(host: HostDto): HostDto {
+        return {
+            ...host,
+            url: `${IB_LISTEN}${RootRoutePath.DOMAINS}/${host.domainId}${DomainRoutePath.HOSTS}/${host.id!}`,
+        };
+    }
+
+    private pageWithUrl(hosts: PageDto<HostDto>, request: Request): PageDto<HostDto> {
+        const { domainId, page, size } = request;
+        const hostsWithUrl = hosts.entities.map((host) => this.withUrl(host));
+        return {
+            ...hosts,
+            entities: hostsWithUrl,
+            url:
+                `${IB_LISTEN}${RootRoutePath.DOMAINS}/${domainId}${DomainRoutePath.HOSTS}` +
+                `?${PAGE_PARAM_NAME}=${page}&${SIZE_PARAM_NAME}=${size}`,
+        };
     }
 }
 

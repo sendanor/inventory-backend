@@ -65,7 +65,7 @@ class PgHostRepository implements HostRepository {
         return new Promise((resolve, reject) => {
             this.pool
                 .query(totalCount, [domainId])
-                .then((response) => resolve(response.rows[0].count))
+                .then((response) => resolve(parseInt(response.rows[0].count, 10)))
                 .catch((err) => reject(err));
         });
     }

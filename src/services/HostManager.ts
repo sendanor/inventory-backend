@@ -46,20 +46,22 @@ export default class HostManager {
         });
     }
 
-    public create(dto: HostDto): Promise<SaveResult<Host>> {
+    public create(dto: HostDto): Promise<SaveResult<HostDto>> {
         const host: Host = { ...dto, createdTime: new Date() };
         return new Promise((resolve, reject) =>
             this.validateName(host)
                 .then((valid) =>
                     valid
-                        ? this.repository.create(host).then((entity) => resolve({ entity, status: SaveStatus.Created }))
+                        ? this.repository
+                              .create(host)
+                              .then((host) => resolve({ dto: Mapper.toDto(host), status: SaveStatus.Created }))
                         : resolve({ status: SaveStatus.NameConflict })
                 )
                 .catch((err) => reject(err))
         );
     }
 
-    public saveById(dto: HostDto): Promise<SaveResult<Host>> {
+    public saveById(dto: HostDto): Promise<SaveResult<HostDto>> {
         const host: HostDto = { ...dto };
         const id = host.id!;
         return new Promise((resolve, reject) =>
@@ -70,7 +72,7 @@ export default class HostManager {
                         return resolve(this.create(host));
                     }
                     if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), host)) {
-                        return resolve({ entity: current, status: SaveStatus.NotChanged });
+                        return resolve({ dto: Mapper.toDto(current), status: SaveStatus.NotChanged });
                     }
                     return this.validateName(host).then((valid) => {
                         if (!valid) {
@@ -79,19 +81,19 @@ export default class HostManager {
                         const status = current.deleted ? SaveStatus.Created : SaveStatus.Updated;
                         return this.repository
                             .update(Mapper.toUpdatedHost(host, current))
-                            .then((entity) => resolve({ status, entity }));
+                            .then((host) => resolve({ status, dto: Mapper.toDto(host) }));
                     });
                 })
                 .catch((err) => reject(err))
         );
     }
 
-    public mergeById(id: string, dto: HostDto): Promise<SaveResult<Host>> {
+    public mergeById(id: string, dto: HostDto): Promise<SaveResult<HostDto>> {
         const host: HostDto = { ...dto, id };
         return this.repository.findById(host.domainId, id, true).then((current) => this.merge(host, current));
     }
 
-    public mergeByName(name: string, dto: HostDto): Promise<SaveResult<Host>> {
+    public mergeByName(name: string, dto: HostDto): Promise<SaveResult<HostDto>> {
         const host: HostDto = { ...dto };
         return this.repository.findByName(host.domainId, name, true).then((current) => this.merge(host, current));
     }
@@ -106,27 +108,27 @@ export default class HostManager {
         );
     }
 
-    private merge(dto: HostDto, current?: Host): Promise<SaveResult<Host>> {
+    private merge(dto: HostDto, current?: Host): Promise<SaveResult<HostDto>> {
         if (!current) {
             return this.create(dto);
         }
         const merged = { ...dto, id: current.id, data: merge({}, current.data, dto.data) };
         if (!current.deleted && HostUtils.areEqualHostDtos(Mapper.toDto(current), merged)) {
-            return Promise.resolve({ entity: current, status: SaveStatus.NotChanged });
+            return Promise.resolve({ dto: Mapper.toDto(current), status: SaveStatus.NotChanged });
         }
         return this.validateName(merged).then((valid) => {
             if (!valid) {
-                return Promise.resolve({ status: SaveStatus.NameConflict } as SaveResult<Host>);
+                return Promise.resolve({ status: SaveStatus.NameConflict } as SaveResult<HostDto>);
             }
             if (current.deleted) {
                 return this.repository
                     .update(Mapper.toUpdatedHost({ ...dto }, current))
-                    .then((entity) => Promise.resolve({ entity, status: SaveStatus.Created }))
+                    .then((host) => Promise.resolve({ dto: Mapper.toDto(host), status: SaveStatus.Created }))
                     .catch((err) => Promise.reject(err));
             }
             return this.repository
                 .update(Mapper.toUpdatedHost(merged, current))
-                .then((entity) => Promise.resolve({ entity, status: SaveStatus.Updated }))
+                .then((host) => Promise.resolve({ dto: Mapper.toDto(host), status: SaveStatus.Updated }))
                 .catch((err) => Promise.reject(err));
         });
     }

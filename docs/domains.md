@@ -8,9 +8,9 @@
 
 ```json
 {
-    "timestamp": <timestamp of the response in ISO-8601 format>
-    "changed": <true | false>,
-    "payload": ...
+    "timestamp": "<timestamp of the response in ISO-8601 format>",
+    "changed": "<true | false>",
+    "payload": "{...}"
 }
 ```
 
@@ -50,9 +50,10 @@
 
 ```json
 "payload": {
-    "id": <id>,
+    "id": "<id>",
     "name": "Domain name",
-    "data": {...}
+    "data": "{...}",
+    "url": "<resource url>"
 }
 ```
 
@@ -82,16 +83,23 @@
 "payload": {
     "domains": [
         {
-            "id": <id>,
+            "id": "<id>",
             "name": "Domain name 1",
-            "data": {...}
+            "data": "{...}",
+            "url": "<resource url>"
         },
-        ...
+        {
+            "id": "<id>",
+            "name": "Domain name n",
+            "data": "{...}",
+            "url": "<resource url>"
+        },
     ],
-    "pageNumber": <current page number>,
-    "pageSize": <requested page size>,
-    "totalCount": <total number of domains>,
-    "pageCount": <total number of pages>
+    "pageNumber": "<current page number>",
+    "pageSize": "<requested page size>",
+    "totalCount": "<total number of domains>",
+    "pageCount": "<total number of pages>",
+    "url": "<page url>",
 }
 ```
 
@@ -106,7 +114,7 @@
 ```json
 {
     "name": "Domain name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 
@@ -118,9 +126,9 @@
 
 ```json
 "payload": {
-    "id": <id>
+    "id": "<id>"
     "name": "Domain name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 
@@ -147,7 +155,7 @@
 ```json
 {
     "name": "Domain name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 
@@ -161,9 +169,9 @@
 
 ```json
 "payload": {
-    "id": <id>
+    "id": "<id>",
     "name": "Domain name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 
@@ -192,7 +200,7 @@
 ```json
 {
     "name": "Domain name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 
@@ -206,9 +214,9 @@
 
 ```json
 "payload": {
-    "id": <id>
+    "id": "<id>",
     "name": "Domain name",
-    "data": {...}
+    "data": "{...}"
 }
 ```
 
