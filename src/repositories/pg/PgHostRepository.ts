@@ -12,8 +12,8 @@ const findById = 'SELECT * FROM hosts WHERE "domainId" = $1 AND id = $2 AND NOT 
 const findByIdAllowDeleted = 'SELECT * FROM hosts WHERE "domainId" = $1 AND id = $2';
 const findByName = 'SELECT * FROM hosts WHERE "domainId" = $1 AND name = $2 AND NOT deleted';
 const findByNameAllowDeleted = 'SELECT * FROM hosts WHERE "domainId" = $1 AND name = $2';
-const getPage = 'SELECT * FROM hosts WHERE "domainId" = $1 AND NOT deleted ORDER BY name OFFSET $2 LIMIT $3';
-const totalCount = 'SELECT COUNT(*) FROM hosts WHERE "domainId" = $1 AND NOT deleted';
+const getPage = 'SELECT * FROM hosts WHERE "domainId" = $1 AND name ILIKE $4 AND NOT deleted ORDER BY name OFFSET $2 LIMIT $3';
+const totalCount = 'SELECT COUNT(*) FROM hosts WHERE "domainId" = $1 AND name ILIKE $2 AND NOT deleted';
 const insert = 'INSERT INTO hosts("domainId", name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *';
 const insertWithId = 'INSERT INTO hosts(id, "domainId", name, data, "createdTime") VALUES($1, $2, $3, $4, $5) RETURNING *';
 const update =
@@ -52,19 +52,19 @@ class PgHostRepository implements HostRepository {
         });
     }
 
-    public getPage(domainId: string, page: number, size: number): Promise<Host[]> {
+    public getPage(domainId: string, page: number, size: number, search?: string): Promise<Host[]> {
         return new Promise((resolve, reject) => {
             this.pool
-                .query(getPage, [domainId, (page - 1) * size, size])
+                .query(getPage, [domainId, (page - 1) * size, size, this.toSearchString(search)])
                 .then((response) => resolve(response.rows))
                 .catch((err) => reject(err));
         });
     }
 
-    public getCount(domainId: string): Promise<number> {
+    public getCount(domainId: string, search?: string): Promise<number> {
         return new Promise((resolve, reject) => {
             this.pool
-                .query(totalCount, [domainId])
+                .query(totalCount, [domainId, this.toSearchString(search)])
                 .then((response) => resolve(parseInt(response.rows[0].count, 10)))
                 .catch((err) => reject(err));
         });
@@ -100,6 +100,10 @@ class PgHostRepository implements HostRepository {
                 .then((response) => resolve(response.rowCount === 1))
                 .catch((err) => reject(err));
         });
+    }
+
+    private toSearchString(search?: string) {
+        return search ? `%${search}%` : "%";
     }
 }
 

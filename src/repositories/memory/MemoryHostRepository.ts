@@ -116,14 +116,14 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public getPage(domainId: string, page: number, size: number): Promise<Host[]> {
+    public getPage(domainId: string, page: number, size: number, search?: string): Promise<Host[]> {
         const currentHosts = this._getHosts(domainId);
         return new Promise((resolve, reject) => {
             try {
                 const allKeys: Array<string> = keys(currentHosts);
                 const allActiveRecords: Array<CacheRecord> = filter(
                     map(allKeys, (key: string): CacheRecord => currentHosts[key]),
-                    (record: CacheRecord) => !record.deleted
+                    (record: CacheRecord) => this._matchesCriteria(record, search)
                 );
                 const hosts = slice(allActiveRecords, (page - 1) * size, page * size).map(
                     (record: CacheRecord): Host => {
@@ -137,14 +137,14 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public getCount(domainId: string): Promise<number> {
+    public getCount(domainId: string, search?: string): Promise<number> {
         const hosts = this._getHosts(domainId);
         return new Promise((resolve, reject) => {
             try {
                 const allKeys: Array<string> = keys(hosts);
                 const allActiveRecords: Array<CacheRecord> = filter(
                     map(allKeys, (key: string): CacheRecord => hosts[key]),
-                    (record: CacheRecord) => !record.deleted
+                    (record: CacheRecord) => this._matchesCriteria(record, search)
                 );
                 resolve(allActiveRecords.length);
             } catch (err) {
@@ -265,6 +265,10 @@ export class MemoryHostRepository implements HostRepository {
 
     protected _getHosts(domainId: string): Record<string, CacheRecord> {
         return this._cache[domainId] ?? {};
+    }
+
+    private _matchesCriteria(record: CacheRecord, search?: string) {
+        return (!search || record.host.name.toLowerCase().includes(search.toLowerCase())) && !record.deleted;
     }
 }
 

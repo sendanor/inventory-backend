@@ -30,12 +30,12 @@ export default class HostRepositoryAdapter implements HostRepository, Observable
         return this._repository.findByName(domainId, name, allowDeleted);
     }
 
-    getPage(domainId: string, page: number, size: number): Promise<Host[]> {
-        return this._repository.getPage(domainId, page, size);
+    getPage(domainId: string, page: number, size: number, search?: string): Promise<Host[]> {
+        return this._repository.getPage(domainId, page, size, search);
     }
 
-    getCount(domainId: string): Promise<number> {
-        return this._repository.getCount(domainId);
+    getCount(domainId: string, search?: string): Promise<number> {
+        return this._repository.getCount(domainId, search);
     }
 
     create(host: Host): Promise<Host> {

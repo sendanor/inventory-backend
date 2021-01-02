@@ -2,6 +2,7 @@
 
 import { IncomingMessage, ServerResponse } from "http";
 import { IS_PRODUCTION } from "../constants/env";
+import { SEARCH_PARAM_NAME } from "../types/Routes";
 import LogService, { Logger } from "./LogService";
 
 export enum Method {
@@ -36,6 +37,7 @@ interface Request {
     hostName?: string;
     page: number;
     size: number;
+    search?: string;
 }
 
 class ControllerUtils {
@@ -76,6 +78,10 @@ class ControllerUtils {
         logger.error("InternalError: ", err);
         const reason = IS_PRODUCTION ? { reason: "Internal server error" } : { ...err, stack: err.stack };
         ControllerUtils.writeResponse(res, Status.InternalError, reason, false);
+    }
+
+    static toSearchUrlString(search?: string) {
+        return search ? `&${SEARCH_PARAM_NAME}=${search}` : "";
     }
 }
 

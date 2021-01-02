@@ -23,6 +23,7 @@ export interface HostRepository {
     /**
      * Searches for a host by an id
      *
+     * @param domainId domain id
      * @param id Id of the host to search for
      * @param allowDeleted true, if hosts marked as 'deleted' should be searched also
      * @returns Host, if one was found, undefined otherwise
@@ -32,6 +33,7 @@ export interface HostRepository {
     /**
      * Searches for a host by a name
      *
+     * @param domainId domain id
      * @param name Name of the host to search for
      * @param allowDeleted true, if hosts marked as 'deleted' should be searched also
      * @returns Host, if one was found, undefined otherwise
@@ -41,16 +43,21 @@ export interface HostRepository {
     /**
      * Gets one page of hosts
      *
+     * @param domainId domain id
      * @param page page number, starting from 1
      * @param size page size
+     * @param search search value for a name
      * @returns Page of hosts sorted by name
      */
-    getPage(domainId: string, page: number, size: number): Promise<Host[]>;
+    getPage(domainId: string, page: number, size: number, search?: string): Promise<Host[]>;
 
     /**
      * Gets a total count of hosts
+     *
+     * @param domainId domain id
+     * @param search search value for a host name
      */
-    getCount(domainId: string): Promise<number>;
+    getCount(domainId: string, search?: string): Promise<number>;
 
     /**
      * Creates a new host

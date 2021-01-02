@@ -6,9 +6,9 @@ import { SaveResult, SaveStatus } from "./types/SaveResult";
 import { DomainDto } from "./types/Domain";
 import validate from "./DefaultDomainValidator";
 import LogService from "./services/LogService";
-import { ControllerUtils as Utils, Request, Method, Status } from "./services/ControllerUtils";
+import { ControllerUtils as Utils, Request, Method, Status, ControllerUtils } from "./services/ControllerUtils";
 import { IB_LISTEN } from "./constants/env";
-import { PAGE_PARAM_NAME, RootRoutePath, SIZE_PARAM_NAME } from "./types/Routes";
+import { PAGE_PARAM_NAME, RootRoutePath, SIZE_PARAM_NAME, SEARCH_PARAM_NAME } from "./types/Routes";
 import PageDto from "./types/PageDto";
 
 const LOG = LogService.createLogger("DomainController");
@@ -50,7 +50,7 @@ export class DomainController {
     }
 
     private processGet(res: ServerResponse, request: Request) {
-        const { domainId, domainName, page, size } = { ...request };
+        const { domainId, domainName, page, size, search } = { ...request };
         if (domainId) {
             this.manager
                 .findById(domainId)
@@ -67,7 +67,7 @@ export class DomainController {
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else if (page && size) {
             this.manager
-                .getPage(page, size)
+                .getPage(page, size, search)
                 .then((page) => Utils.writeResponse(res, Status.OK, this.pageWithUrl(page, request), false))
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else {
@@ -198,12 +198,14 @@ export class DomainController {
     }
 
     private pageWithUrl(domains: PageDto<DomainDto>, request: Request): PageDto<DomainDto> {
-        const { domainId, page, size } = request;
+        const { page, size, search } = request;
         const domainsWithUrl = domains.entities.map((domain) => this.withUrl(domain));
         return {
             ...domains,
             entities: domainsWithUrl,
-            url: `${IB_LISTEN}${RootRoutePath.DOMAINS}?${PAGE_PARAM_NAME}=${page}&${SIZE_PARAM_NAME}=${size}`,
+            url:
+                `${IB_LISTEN}${RootRoutePath.DOMAINS}?${PAGE_PARAM_NAME}=${page}&${SIZE_PARAM_NAME}=${size}` +
+                ControllerUtils.toSearchUrlString(search),
         };
     }
 }

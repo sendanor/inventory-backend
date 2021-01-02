@@ -36,9 +36,9 @@ export default class DomainManager {
         );
     }
 
-    public getPage(page: number, size: number): Promise<PageDto<DomainDto>> {
-        const domainsPromise = this.repository.getPage(page, size);
-        const countPromise = this.repository.getCount();
+    public getPage(page: number, size: number, search?: string): Promise<PageDto<DomainDto>> {
+        const domainsPromise = this.repository.getPage(page, size, search);
+        const countPromise = this.repository.getCount(search);
         return Promise.all([domainsPromise, countPromise]).then((values) => {
             const domains = (values[0] as Domain[]).map((h) => Mapper.toDto(h));
             const pageNumber = page;

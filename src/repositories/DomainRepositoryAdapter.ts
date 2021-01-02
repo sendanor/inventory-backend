@@ -30,12 +30,12 @@ export default class DomainRepositoryAdapter implements DomainRepository, Observ
         return this._repository.findByName(name, allowDeleted);
     }
 
-    getPage(page: number, size: number): Promise<Domain[]> {
-        return this._repository.getPage(page, size);
+    getPage(page: number, size: number, search?: string): Promise<Domain[]> {
+        return this._repository.getPage(page, size, search);
     }
 
-    getCount(): Promise<number> {
-        return this._repository.getCount();
+    getCount(search?: string): Promise<number> {
+        return this._repository.getCount(search);
     }
 
     create(domain: Domain): Promise<Domain> {

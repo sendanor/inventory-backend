@@ -7,8 +7,8 @@ import { SaveResult, SaveStatus } from "./types/SaveResult";
 import { HostDto } from "./types/Host";
 import validate from "./DefaultHostValidator";
 import LogService from "./services/LogService";
-import { ControllerUtils as Utils, Request, Method, Status } from "./services/ControllerUtils";
-import { DomainRoutePath, PAGE_PARAM_NAME, RootRoutePath, SIZE_PARAM_NAME } from "./types/Routes";
+import { ControllerUtils as Utils, Request, Method, Status, ControllerUtils } from "./services/ControllerUtils";
+import { DomainRoutePath, PAGE_PARAM_NAME, RootRoutePath, SEARCH_PARAM_NAME, SIZE_PARAM_NAME } from "./types/Routes";
 import PageDto from "./types/PageDto";
 
 const LOG = LogService.createLogger("HostController");
@@ -46,7 +46,7 @@ export class HostController {
     }
 
     private processGet(res: ServerResponse, request: Request) {
-        const { hostId, domainId, hostName, page, size } = { ...request, domainId: request.domainId! };
+        const { hostId, domainId, hostName, page, size, search } = { ...request, domainId: request.domainId! };
         if (hostId) {
             this.manager
                 .findById(domainId, hostId)
@@ -59,7 +59,7 @@ export class HostController {
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else if (page && size) {
             this.manager
-                .getPage(domainId, page, size)
+                .getPage(domainId, page, size, search)
                 .then((page) => Utils.writeResponse(res, Status.OK, this.pageWithUrl(page, request), false))
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else {
@@ -181,14 +181,15 @@ export class HostController {
     }
 
     private pageWithUrl(hosts: PageDto<HostDto>, request: Request): PageDto<HostDto> {
-        const { domainId, page, size } = request;
+        const { domainId, page, size, search } = request;
         const hostsWithUrl = hosts.entities.map((host) => this.withUrl(host));
         return {
             ...hosts,
             entities: hostsWithUrl,
             url:
                 `${IB_LISTEN}${RootRoutePath.DOMAINS}/${domainId}${DomainRoutePath.HOSTS}` +
-                `?${PAGE_PARAM_NAME}=${page}&${SIZE_PARAM_NAME}=${size}`,
+                `?${PAGE_PARAM_NAME}=${page}&${SIZE_PARAM_NAME}=${size}` +
+                ControllerUtils.toSearchUrlString(search),
         };
     }
 }

@@ -5,7 +5,7 @@ import LogService from "./services/LogService";
 import { IB_DEFAULT_PAGE_SIZE } from "./constants/env";
 import HostController from "./HostController";
 import DomainController from "./DomainController";
-import { DomainRoutePath, RootRoutePath, SIZE_PARAM_NAME, PAGE_PARAM_NAME } from "./types/Routes";
+import { DomainRoutePath, RootRoutePath, SIZE_PARAM_NAME, PAGE_PARAM_NAME, SEARCH_PARAM_NAME } from "./types/Routes";
 import { ControllerUtils as Utils, Request, Method, Status, ResourceType } from "./services/ControllerUtils";
 import { DomainDto } from "./types/Domain";
 
@@ -19,6 +19,7 @@ export default class MainController {
     private paramsPattern: RegExp = new RegExp(`${RootRoutePath.DOMAINS}(?:/.*?${DomainRoutePath.HOSTS})?(\\?.*)`);
     private sizePattern: RegExp = new RegExp(`[\\?&]${SIZE_PARAM_NAME}=(\\d+)`);
     private pagePattern: RegExp = new RegExp(`[\\?&]${PAGE_PARAM_NAME}=(\\d+)`);
+    private searchPattern: RegExp = new RegExp(`[\\?&]${SEARCH_PARAM_NAME}=([^&]+)`);
 
     constructor(domainController: DomainController, hostController: HostController) {
         this.domainController = domainController;
@@ -65,9 +66,11 @@ export default class MainController {
                 const params = this.getParams(url);
                 const pageMatch: Array<string> | null = params.match(this.pagePattern);
                 const sizeMatch: Array<string> | null = params.match(this.sizePattern);
+                const searchMatch: Array<string> | null = params.match(this.searchPattern);
                 const page = this.parsePositiveIntMatch(pageMatch, 1);
                 const size = this.parsePositiveIntMatch(sizeMatch, IB_DEFAULT_PAGE_SIZE);
-                resolve({ url, method, resource, domainId, domainName, hostId, hostName, page, size });
+                const search = searchMatch ? decodeURIComponent(searchMatch[1]) : undefined;
+                resolve({ url, method, resource, domainId, domainName, hostId, hostName, page, size, search });
             } catch (error) {
                 reject(error);
             }

@@ -15,3 +15,4 @@ export enum DomainRoutePath {
 
 export const SIZE_PARAM_NAME = "size";
 export const PAGE_PARAM_NAME = "page";
+export const SEARCH_PARAM_NAME = "search";

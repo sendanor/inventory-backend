@@ -12,8 +12,8 @@ const findById = "SELECT * FROM domains WHERE id = $1 AND NOT deleted";
 const findByIdAllowDeleted = "SELECT * FROM domains WHERE id = $1";
 const findByName = "SELECT * FROM domains WHERE name = $1 AND NOT deleted";
 const findByNameAllowDeleted = "SELECT * FROM domains WHERE name = $1";
-const getPage = "SELECT * FROM domains WHERE NOT deleted ORDER BY name OFFSET $1 LIMIT $2";
-const totalCount = "SELECT COUNT(*) FROM domains WHERE NOT deleted";
+const getPage = "SELECT * FROM domains WHERE name ILIKE $3 AND NOT deleted ORDER BY name OFFSET $1 LIMIT $2";
+const totalCount = "SELECT COUNT(*) FROM domains WHERE name ILIKE $1 AND NOT deleted";
 const insert = 'INSERT INTO domains(name, data, "createdTime") VALUES($1, $2, $3) RETURNING *';
 const insertWithId = 'INSERT INTO domains(id, name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *';
 const update =
@@ -51,19 +51,19 @@ class PgDomainRepository implements DomainRepository {
         });
     }
 
-    public getPage(page: number, size: number): Promise<Domain[]> {
+    public getPage(page: number, size: number, search?: string): Promise<Domain[]> {
         return new Promise((resolve, reject) => {
             this.pool
-                .query(getPage, [(page - 1) * size, size])
+                .query(getPage, [(page - 1) * size, size, this.toSearchString(search)])
                 .then((response) => resolve(response.rows))
                 .catch((err) => reject(err));
         });
     }
 
-    public getCount(): Promise<number> {
+    public getCount(search?: string): Promise<number> {
         return new Promise((resolve, reject) => {
             this.pool
-                .query(totalCount, [])
+                .query(totalCount, [this.toSearchString(search)])
                 .then((response) => resolve(parseInt(response.rows[0].count, 10)))
                 .catch((err) => reject(err));
         });
@@ -99,6 +99,10 @@ class PgDomainRepository implements DomainRepository {
                 .then((response) => resolve(response.rowCount === 1))
                 .catch((err) => reject(err));
         });
+    }
+
+    private toSearchString(search?: string) {
+        return search ? `%${search}%` : "%";
     }
 }
 

@@ -33,9 +33,9 @@ export default class HostManager {
         );
     }
 
-    public getPage(domainId: string, page: number, size: number): Promise<PageDto<HostDto>> {
-        const hostsPromise = this.repository.getPage(domainId, page, size);
-        const countPromise = this.repository.getCount(domainId);
+    public getPage(domainId: string, page: number, size: number, search?: string): Promise<PageDto<HostDto>> {
+        const hostsPromise = this.repository.getPage(domainId, page, size, search);
+        const countPromise = this.repository.getCount(domainId, search);
         return Promise.all([hostsPromise, countPromise]).then((values) => {
             const hosts = (values[0] as Host[]).map((h) => Mapper.toDto(h));
             const pageNumber = page;
