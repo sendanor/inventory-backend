@@ -1,12 +1,12 @@
 // Copyright (c) 2020 Sendanor. All rights reserved.
 
-import { HostRepository } from "../../types/HostRepository";
-import Host from "../../types/Host";
+import { DomainRepository } from "../../types/DomainRepository";
+import Domain from "../../types/Domain";
 import { has, keys, map, slice, filter, find, forEach } from "../../modules/lodash";
 import LogService from "../../services/LogService";
 import { v4 as uuidV4 } from "uuid";
 
-const LOG = LogService.createLogger("MemoryHostRepository");
+const LOG = LogService.createLogger("MemoryDomainRepository");
 
 /**
  * When generating a new ID, loop maximum this times until throwing an error
@@ -21,15 +21,15 @@ const HARD_DELETE_INTERVAL = 300 * 1000;
 interface CacheRecord {
     deleted: boolean;
 
-    host: Host;
+    domain: Domain;
 }
 
 interface DeleteIntervalCallback {
     (): void;
 }
 
-export class MemoryHostRepository implements HostRepository {
-    private _cache: Record<string, Record<string, CacheRecord>>;
+export class MemoryDomainRepository implements DomainRepository {
+    private _cache: Record<string, CacheRecord>;
 
     /**
      * Interval when to delete deleted records
@@ -63,18 +63,17 @@ export class MemoryHostRepository implements HostRepository {
         }
     }
 
-    public findById(domainId: string, id: string, allowDeleted?: true): Promise<Host | undefined> {
-        const hosts = this._getHosts(domainId);
+    public findById(id: string, allowDeleted?: true): Promise<Domain | undefined> {
         return new Promise((resolve, reject) => {
             try {
-                if (has(hosts, id)) {
-                    const record: CacheRecord = hosts[id];
-                    const host: Host = record.host;
+                if (has(this._cache, id)) {
+                    const record: CacheRecord = this._cache[id];
+                    const domain: Domain = record.domain;
 
                     if (allowDeleted === true) {
-                        resolve({ ...host, deleted: record.deleted });
+                        resolve({ ...domain, deleted: record.deleted });
                     } else if (!record.deleted) {
-                        resolve({ ...host });
+                        resolve({ ...domain });
                     } else {
                         resolve(undefined);
                     }
@@ -87,23 +86,22 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public findByName(domainId: string, name: string, allowDeleted?: true): Promise<Host | undefined> {
-        const hosts = this._getHosts(domainId);
+    public findByName(name: string, allowDeleted?: true): Promise<Domain | undefined> {
         return new Promise((resolve, reject) => {
             try {
-                const allRecords: Array<CacheRecord> = map(keys(hosts), (key: string): CacheRecord => hosts[key]);
+                const allRecords: Array<CacheRecord> = map(keys(this._cache), (key: string): CacheRecord => this._cache[key]);
                 const record: CacheRecord | undefined = find(
                     allRecords,
-                    (record: CacheRecord): boolean => record.host.name === name
+                    (record: CacheRecord): boolean => record.domain.name === name
                 );
 
                 if (record !== undefined) {
-                    const host: Host = record.host;
+                    const domain: Domain = record.domain;
 
                     if (allowDeleted === true) {
-                        resolve({ ...host, deleted: record.deleted });
+                        resolve({ ...domain, deleted: record.deleted });
                     } else if (!record.deleted) {
-                        resolve({ ...host });
+                        resolve({ ...domain });
                     } else {
                         resolve(undefined);
                     }
@@ -116,34 +114,32 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public getPage(domainId: string, page: number, size: number, search?: string): Promise<Host[]> {
-        const currentHosts = this._getHosts(domainId);
+    public getPage(page: number, size: number, search?: string): Promise<Domain[]> {
         return new Promise((resolve, reject) => {
             try {
-                const allKeys: Array<string> = keys(currentHosts);
+                const allKeys: Array<string> = keys(this._cache);
                 const allActiveRecords: Array<CacheRecord> = filter(
-                    map(allKeys, (key: string): CacheRecord => currentHosts[key]),
+                    map(allKeys, (key: string): CacheRecord => this._cache[key]),
                     (record: CacheRecord) => this._matchesCriteria(record, search)
                 );
-                const hosts = slice(allActiveRecords, (page - 1) * size, page * size).map(
-                    (record: CacheRecord): Host => {
-                        return { ...record.host };
+                const domains = slice(allActiveRecords, (page - 1) * size, page * size).map(
+                    (record: CacheRecord): Domain => {
+                        return { ...record.domain };
                     }
                 );
-                resolve(hosts);
+                resolve(domains);
             } catch (err) {
                 reject(err);
             }
         });
     }
 
-    public getCount(domainId: string, search?: string): Promise<number> {
-        const hosts = this._getHosts(domainId);
+    public getCount(search?: string): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
-                const allKeys: Array<string> = keys(hosts);
+                const allKeys: Array<string> = keys(this._cache);
                 const allActiveRecords: Array<CacheRecord> = filter(
-                    map(allKeys, (key: string): CacheRecord => hosts[key]),
+                    map(allKeys, (key: string): CacheRecord => this._cache[key]),
                     (record: CacheRecord) => this._matchesCriteria(record, search)
                 );
                 resolve(allActiveRecords.length);
@@ -153,23 +149,21 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public create(host: Host): Promise<Host> {
-        const { domainId } = host;
-        const hosts = this._getHosts(domainId);
-        const newHost: Host = { ...host };
+    public create(domain: Domain): Promise<Domain> {
+        const newDomain: Domain = { ...domain };
         return new Promise((resolve, reject) => {
             try {
-                const newId: string = host.id ?? this._createId();
-                if (has(hosts, newId)) {
+                const newId: string = domain.id ?? this._createId();
+                if (has(this._cache, newId)) {
                     throw new TypeError(`Id ${newId} already exists`);
                 }
-                newHost.id = newId;
-                this._setToCache(domainId, newId, {
-                    host: newHost,
+                newDomain.id = newId;
+                this._cache[newId] = {
+                    domain: newDomain,
                     deleted: false,
-                });
+                };
                 resolve({
-                    ...newHost,
+                    ...newDomain,
                 });
             } catch (err) {
                 reject(err);
@@ -177,22 +171,21 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public update(host: Host): Promise<Host> {
-        const hosts = this._getHosts(host.domainId);
-        const id = host.id!;
-        const newHost: Host = {
-            ...host,
+    public update(domain: Domain): Promise<Domain> {
+        const id = domain.id!;
+        const newDomain: Domain = {
+            ...domain,
         };
         return new Promise((resolve, reject) => {
             try {
-                if (!has(hosts, id)) {
+                if (!has(this._cache, id)) {
                     throw new TypeError(`Id ${id} does not exist`);
                 }
-                const record: CacheRecord = hosts[id];
-                hosts[id].host = newHost;
-                hosts[id].deleted = false;
+                const record: CacheRecord = this._cache[id];
+                this._cache[id].domain = newDomain;
+                this._cache[id].deleted = false;
                 resolve({
-                    ...newHost,
+                    ...newDomain,
                 });
             } catch (err) {
                 reject(err);
@@ -200,12 +193,11 @@ export class MemoryHostRepository implements HostRepository {
         });
     }
 
-    public delete(domainId: string, id: string): Promise<boolean> {
-        const hosts = this._getHosts(domainId);
+    public delete(id: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
             try {
-                if (has(hosts, id)) {
-                    const record: CacheRecord = hosts[id];
+                if (has(this._cache, id)) {
+                    const record: CacheRecord = this._cache[id];
                     if (record.deleted) {
                         resolve(false);
                     } else {
@@ -256,24 +248,13 @@ export class MemoryHostRepository implements HostRepository {
         }
     }
 
-    protected _setToCache(domainId: string, hostId: string, record: CacheRecord) {
-        if (!has(this._cache, domainId)) {
-            this._cache[domainId] = {};
-        }
-        this._cache[domainId][hostId] = record;
-    }
-
-    protected _getHosts(domainId: string): Record<string, CacheRecord> {
-        return this._cache[domainId] ?? {};
-    }
-
     private _matchesCriteria(record: CacheRecord, search?: string) {
-        return (!search || record.host.name.toLowerCase().includes(search.toLowerCase())) && !record.deleted;
+        return (!search || record.domain.name.toLowerCase().includes(search.toLowerCase())) && !record.deleted;
     }
 }
 
-export function createRepository(): HostRepository {
-    const repository = new MemoryHostRepository();
+export function createRepository(): DomainRepository {
+    const repository = new MemoryDomainRepository();
     repository.initialize();
     return repository;
 }

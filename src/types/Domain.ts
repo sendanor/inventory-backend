@@ -1,8 +1,7 @@
 // Copyright (c) 2020 Sendanor. All rights reserved.
 
-export default interface Host {
+export default interface Domain {
     id?: string;
-    domainId: string;
     name: string;
     data: any;
     deleted?: boolean;
@@ -11,9 +10,8 @@ export default interface Host {
     deletedTime?: Date;
 }
 
-export interface HostDto {
+export interface DomainDto {
     id?: string;
-    domainId: string;
     name: string;
     data: any;
     url?: string;

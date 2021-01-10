@@ -1,42 +1,57 @@
 #!/usr/bin/env node
 // Copyright (c) 2020 Sendanor. All rights reserved.
 
-import { ProcessUtils } from './services/ProcessUtils'
+import { ProcessUtils } from "./services/ProcessUtils";
 ProcessUtils.initEnvFromDefaultFiles();
 
-import { createRepository as createPgRepository } from "./repositories/pg/PgHostRepository"
-import { createRepository as createMemoryRepository } from "./repositories/memory/MemoryHostRepository"
-import HostController from "./HostController"
+import { createRepository as createPgHostRepository } from "./repositories/pg/PgHostRepository";
+import { createRepository as createPgDomainRepository } from "./repositories/pg/PgDomainRepository";
+import { createRepository as createMemoryDomainRepository } from "./repositories/memory/MemoryDomainRepository";
+import { createRepository as createMemoryHostRepository } from "./repositories/memory/MemoryHostRepository";
+import MainController from "./MainController";
 
-import HTTP = require('http')
-import {IB_LISTEN, IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY} from "./constants/env";
+import HTTP = require("http");
+import { IB_LISTEN, IB_LISTEN_HOSTNAME, IB_LISTEN_PORT, IB_REPOSITORY } from "./constants/env";
 import LogService from "./services/LogService";
-import HostRepository from "./types/HostRepository";
 import InventoryRepository from "./types/InventoryRepository";
 import ListenAdapter from "./services/ListenAdapter";
+import DomainController from "./DomainController";
+import HostController from "./HostController";
+import DomainRepositoryAdapter from "./repositories/DomainRepositoryAdapter";
+import HostRepositoryAdapter from "./repositories/HostRepositoryAdapter";
+import DomainManager from "./services/DomainManager";
+import HostManager from "./services/HostManager";
 
-const LOG = LogService.createLogger('server');
+const LOG = LogService.createLogger("server");
 
-function createRepository () : HostRepository {
+function createRepositories(): { domainRepository: DomainRepositoryAdapter; hostRepository: HostRepositoryAdapter } {
     switch (IB_REPOSITORY) {
-
         case InventoryRepository.PG:
-            return createPgRepository();
+            return {
+                domainRepository: new DomainRepositoryAdapter(createPgDomainRepository()),
+                hostRepository: new HostRepositoryAdapter(createPgHostRepository()),
+            };
 
         case InventoryRepository.MEMORY:
-            return createMemoryRepository();
+            return {
+                domainRepository: new DomainRepositoryAdapter(createMemoryDomainRepository()),
+                hostRepository: new HostRepositoryAdapter(createMemoryHostRepository()),
+            };
 
         default:
             throw new TypeError(`Unimplemented inventory repository: ${IB_REPOSITORY}`);
-
     }
 }
 
 try {
+    const { domainRepository, hostRepository } = createRepositories();
+    const domainManager = new DomainManager(domainRepository, hostRepository);
+    const hostManager = new HostManager(hostRepository);
+    const domainController = new DomainController(domainManager);
+    const hostController = new HostController(hostManager);
+    const mainController = new MainController(domainController, hostController);
 
-    const controller = new HostController(createRepository());
-
-    const server = HTTP.createServer(controller.requestListener.bind(controller));
+    const server = HTTP.createServer(mainController.requestListener.bind(mainController));
 
     const listenAdapter = new ListenAdapter(server, IB_LISTEN);
 
@@ -45,7 +60,6 @@ try {
     });
 
     listenAdapter.listen();
-
-} catch(err) {
-    LOG.error('ERROR: ', err);
+} catch (err) {
+    LOG.error("ERROR: ", err);
 }

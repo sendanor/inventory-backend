@@ -6,6 +6,7 @@ export default class HostMapper {
     public static toDto(host: Host): HostDto {
         return {
             id: host.id,
+            domainId: host.domainId,
             name: host.name,
             data: host.data,
         }

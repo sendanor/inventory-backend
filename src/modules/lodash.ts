@@ -47,5 +47,5 @@ export {
     slice,
     remove,
     indexOf,
-    merge
+    merge,
 };

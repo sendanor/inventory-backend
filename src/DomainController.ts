@@ -1,23 +1,27 @@
 // Copyright (c) 2020 Sendanor. All rights reserved.
 
-import { IB_LISTEN } from "./constants/env";
 import { IncomingMessage, ServerResponse } from "http";
-import HostManager from "./services/HostManager";
+import DomainManager from "./services/DomainManager";
 import { SaveResult, SaveStatus } from "./types/SaveResult";
-import { HostDto } from "./types/Host";
-import validate from "./DefaultHostValidator";
+import { DomainDto } from "./types/Domain";
+import validate from "./DefaultDomainValidator";
 import LogService from "./services/LogService";
 import { ControllerUtils as Utils, Request, Method, Status, ControllerUtils } from "./services/ControllerUtils";
-import { DomainRoutePath, PAGE_PARAM_NAME, RootRoutePath, SEARCH_PARAM_NAME, SIZE_PARAM_NAME } from "./types/Routes";
+import { IB_LISTEN } from "./constants/env";
+import { PAGE_PARAM_NAME, RootRoutePath, SIZE_PARAM_NAME, SEARCH_PARAM_NAME } from "./types/Routes";
 import PageDto from "./types/PageDto";
 
-const LOG = LogService.createLogger("HostController");
+const LOG = LogService.createLogger("DomainController");
 
-export class HostController {
-    private manager: HostManager;
+export class DomainController {
+    private manager: DomainManager;
 
-    constructor(manager: HostManager) {
+    constructor(manager: DomainManager) {
         this.manager = manager;
+    }
+
+    public getDomainManager(): DomainManager {
+        return this.manager;
     }
 
     public processRequest(msg: IncomingMessage, res: ServerResponse, request: Request) {
@@ -46,20 +50,24 @@ export class HostController {
     }
 
     private processGet(res: ServerResponse, request: Request) {
-        const { hostId, domainId, hostName, page, size, search } = { ...request, domainId: request.domainId! };
-        if (hostId) {
+        const { domainId, domainName, page, size, search } = { ...request };
+        if (domainId) {
             this.manager
-                .findById(domainId, hostId)
-                .then((host) => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host && this.withUrl(host), false))
+                .findById(domainId)
+                .then((domain) =>
+                    Utils.writeResponse(res, domain ? Status.OK : Status.NotFound, domain && this.withUrl(domain), false)
+                )
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
-        } else if (hostName) {
+        } else if (domainName) {
             this.manager
-                .findByName(domainId, hostName)
-                .then((host) => Utils.writeResponse(res, host ? Status.OK : Status.NotFound, host && this.withUrl(host), false))
+                .findByName(domainName)
+                .then((domain) =>
+                    Utils.writeResponse(res, domain ? Status.OK : Status.NotFound, domain && this.withUrl(domain), false)
+                )
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else if (page && size) {
             this.manager
-                .getPage(domainId, page, size, search)
+                .getPage(page, size, search)
                 .then((page) => Utils.writeResponse(res, Status.OK, this.pageWithUrl(page, request), false))
                 .catch((err) => Utils.writeInternalError(res, err, LOG));
         } else {
@@ -68,12 +76,12 @@ export class HostController {
     }
 
     private processPost(msg: IncomingMessage, res: ServerResponse, request: Request) {
-        const { hostId, domainId, hostName } = { ...request, domainId: request.domainId! };
-        if (!hostId && !hostName) {
+        const { domainId, domainName } = { ...request };
+        if (!domainId && !domainName) {
             this.getValidRequestBody(msg)
-                .then((host) =>
+                .then((domain) =>
                     this.manager
-                        .create({ domainId, name: host.name, data: host.data })
+                        .create({ name: domain.name, data: domain.data })
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
@@ -84,12 +92,12 @@ export class HostController {
     }
 
     private processPut(msg: IncomingMessage, res: ServerResponse, request: Request) {
-        const { hostId, domainId } = { ...request, domainId: request.domainId! };
-        if (hostId) {
+        const { domainId } = { ...request };
+        if (domainId) {
             this.getValidRequestBody(msg)
-                .then((host) =>
+                .then((domain) =>
                     this.manager
-                        .saveById({ domainId, id: hostId, name: host.name, data: host.data })
+                        .saveById({ id: domainId, name: domain.name, data: domain.data })
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
@@ -100,21 +108,21 @@ export class HostController {
     }
 
     private processPatch(msg: IncomingMessage, res: ServerResponse, request: Request) {
-        const { hostId, domainId, hostName } = { ...request, domainId: request.domainId! };
-        if (hostId) {
+        const { domainId, domainName } = { ...request };
+        if (domainId) {
             this.getValidRequestBody(msg)
-                .then((host) =>
+                .then((domain) =>
                     this.manager
-                        .mergeById(hostId, { ...host, domainId })
+                        .mergeById(domainId, { ...domain })
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
                 .catch((err) => Utils.writeBadRequest(res, err, LOG));
-        } else if (hostName) {
+        } else if (domainName) {
             this.getValidRequestBody(msg)
-                .then((host) =>
+                .then((domain) =>
                     this.manager
-                        .mergeByName(hostName, { ...host, domainId })
+                        .mergeByName(domainName, { ...domain })
                         .then((result) => this.handleSaveResult(result, res))
                         .catch((err) => Utils.writeInternalError(res, err, LOG))
                 )
@@ -125,23 +133,32 @@ export class HostController {
     }
 
     private processDelete(res: ServerResponse, request: Request) {
-        const { hostId, domainId, hostName } = { ...request, domainId: request.domainId! };
-        if (hostId) {
-            this.handleDeleteResult(res, this.manager.deleteById(domainId, hostId));
-        } else if (hostName) {
-            this.handleDeleteResult(res, this.manager.deleteByName(domainId, hostName));
+        const { domainId, domainName } = { ...request };
+        if (domainId) {
+            this.handleDeleteResult(res, this.manager.deleteById(domainId));
+        } else if (domainName) {
+            this.handleDeleteResult(res, this.manager.deleteByName(domainName));
         } else {
             Utils.writeBadRequest(res, new Error(":hostId/name is required as a DELETE parameter"), LOG);
         }
     }
 
-    private handleDeleteResult(res: ServerResponse, promise: Promise<boolean>) {
+    private handleDeleteResult(res: ServerResponse, promise: Promise<SaveResult<DomainDto>>) {
         promise
-            .then((found) => Utils.writeResponse(res, found ? Status.OK : Status.NotFound, {}, found))
+            .then((result) => {
+                const status =
+                    result.status === SaveStatus.Deleted
+                        ? Status.OK
+                        : result.status === SaveStatus.NotDeletable
+                        ? Status.Conflict
+                        : Status.NotFound;
+                const changed = result.status === SaveStatus.Deleted;
+                Utils.writeResponse(res, status, { reason: "Domain having hosts cannot be removed" }, changed);
+            })
             .catch((err) => Utils.writeInternalError(res, err, LOG));
     }
 
-    private handleSaveResult(result: SaveResult<HostDto>, response: ServerResponse) {
+    private handleSaveResult(result: SaveResult<DomainDto>, response: ServerResponse) {
         const payload = result.dto ? this.withUrl(result.dto) : null;
         switch (result.status) {
             case SaveStatus.Created:
@@ -162,7 +179,7 @@ export class HostController {
         }
     }
 
-    private getValidRequestBody(req: IncomingMessage): Promise<HostDto> {
+    private getValidRequestBody(req: IncomingMessage): Promise<DomainDto> {
         return Utils.getBody(req)
             .then((body) => {
                 if (body.name && body.data) {
@@ -173,25 +190,24 @@ export class HostController {
             .catch((err) => Promise.reject(err));
     }
 
-    private withUrl(host: HostDto): HostDto {
+    private withUrl(domain: DomainDto): DomainDto {
         return {
-            ...host,
-            url: `${IB_LISTEN}${RootRoutePath.DOMAINS}/${host.domainId}${DomainRoutePath.HOSTS}/${host.id!}`,
+            ...domain,
+            url: `${IB_LISTEN}${RootRoutePath.DOMAINS}/${domain.id}`,
         };
     }
 
-    private pageWithUrl(hosts: PageDto<HostDto>, request: Request): PageDto<HostDto> {
-        const { domainId, page, size, search } = request;
-        const hostsWithUrl = hosts.entities.map((host) => this.withUrl(host));
+    private pageWithUrl(domains: PageDto<DomainDto>, request: Request): PageDto<DomainDto> {
+        const { page, size, search } = request;
+        const domainsWithUrl = domains.entities.map((domain) => this.withUrl(domain));
         return {
-            ...hosts,
-            entities: hostsWithUrl,
+            ...domains,
+            entities: domainsWithUrl,
             url:
-                `${IB_LISTEN}${RootRoutePath.DOMAINS}/${domainId}${DomainRoutePath.HOSTS}` +
-                `?${PAGE_PARAM_NAME}=${page}&${SIZE_PARAM_NAME}=${size}` +
+                `${IB_LISTEN}${RootRoutePath.DOMAINS}?${PAGE_PARAM_NAME}=${page}&${SIZE_PARAM_NAME}=${size}` +
                 ControllerUtils.toSearchUrlString(search),
         };
     }
 }
 
-export default HostController;
+export default DomainController;
