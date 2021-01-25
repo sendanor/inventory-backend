@@ -14,10 +14,11 @@ const findByName = 'SELECT * FROM hosts WHERE "domainId" = $1 AND name = $2 AND 
 const findByNameAllowDeleted = 'SELECT * FROM hosts WHERE "domainId" = $1 AND name = $2';
 const getPage = 'SELECT * FROM hosts WHERE "domainId" = $1 AND name ILIKE $4 AND NOT deleted ORDER BY name OFFSET $2 LIMIT $3';
 const totalCount = 'SELECT COUNT(*) FROM hosts WHERE "domainId" = $1 AND name ILIKE $2 AND NOT deleted';
-const insert = 'INSERT INTO hosts("domainId", name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *';
-const insertWithId = 'INSERT INTO hosts(id, "domainId", name, data, "createdTime") VALUES($1, $2, $3, $4, $5) RETURNING *';
+const insert = 'INSERT INTO hosts("domainId", version, name, data, "createdTime") VALUES($1, $2, $3, $4, $5) RETURNING *';
+const insertWithId =
+    'INSERT INTO hosts(id, "domainId", version, name, data, "createdTime") VALUES($1, $2, $3, $4, $5, $6) RETURNING *';
 const update =
-    'UPDATE hosts SET name = $3, data = $4, "createdTime" = $5, "modifiedTime" = $6, deleted = $7, "deletedTime" = $8 WHERE "domainId" = $1 AND id = $2 RETURNING *';
+    'UPDATE hosts SET version = $3, name = $4, data = $5, "createdTime" = $6, "modifiedTime" = $7, deleted = $8, "deletedTime" = $9 WHERE "domainId" = $1 AND id = $2 RETURNING *';
 const remove =
     'UPDATE hosts SET deleted = true, "deletedTime" = $3 WHERE "domainId" = $1 AND id = $2 AND NOT deleted RETURNING *';
 
@@ -71,10 +72,10 @@ class PgHostRepository implements HostRepository {
     }
 
     public create(host: Host): Promise<Host> {
-        const { id, domainId, name, data, createdTime } = host;
+        const { id, domainId, version, name, data, createdTime } = host;
         return new Promise((resolve, reject) => {
             const idArr: any[] = id ? [id] : [];
-            const params = idArr.concat(domainId, name, data, createdTime);
+            const params = idArr.concat(domainId, version, name, data, createdTime);
             this.pool
                 .query(id ? insertWithId : insert, params)
                 .then((response) => resolve(response.rows[0]))
@@ -83,9 +84,9 @@ class PgHostRepository implements HostRepository {
     }
 
     public update(host: Host): Promise<Host> {
-        const { id, domainId, name, data, createdTime, modifiedTime, deleted, deletedTime } = host;
+        const { id, domainId, version, name, data, createdTime, modifiedTime, deleted, deletedTime } = host;
         return new Promise((resolve, reject) => {
-            const params = [domainId, id!, name, data, createdTime, modifiedTime, deleted, deletedTime];
+            const params = [domainId, id!, version, name, data, createdTime, modifiedTime, deleted, deletedTime];
             this.pool
                 .query(update, params)
                 .then((response) => resolve(response.rows[0]))

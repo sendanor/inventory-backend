@@ -50,7 +50,7 @@ export default class DomainManager {
     }
 
     public create(dto: DomainDto): Promise<SaveResult<DomainDto>> {
-        const domain: Domain = { ...dto, createdTime: new Date() };
+        const domain: Domain = { ...dto, version: 1, createdTime: new Date() };
         return new Promise((resolve, reject) =>
             this.validateName(domain)
                 .then((valid) =>

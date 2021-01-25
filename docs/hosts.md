@@ -69,7 +69,9 @@
 
 ## Get page of hosts
 
-**URL** : `/domains/:domain/hosts?page=<page>&size=<size>`
+**URL** : `/domains/:domain/hosts?page=<page>&size=<size>&search=<search string>`
+
+**Note** : Search string is optional. The search is case-insensitive and matches any substring in the host name.
 
 **Method** : `GET`
 

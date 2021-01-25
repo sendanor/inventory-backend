@@ -47,7 +47,7 @@ export default class HostManager {
     }
 
     public create(dto: HostDto): Promise<SaveResult<HostDto>> {
-        const host: Host = { ...dto, createdTime: new Date() };
+        const host: Host = { ...dto, version: 1, createdTime: new Date() };
         return new Promise((resolve, reject) =>
             this.validateName(host)
                 .then((valid) =>

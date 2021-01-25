@@ -14,10 +14,10 @@ const findByName = "SELECT * FROM domains WHERE name = $1 AND NOT deleted";
 const findByNameAllowDeleted = "SELECT * FROM domains WHERE name = $1";
 const getPage = "SELECT * FROM domains WHERE name ILIKE $3 AND NOT deleted ORDER BY name OFFSET $1 LIMIT $2";
 const totalCount = "SELECT COUNT(*) FROM domains WHERE name ILIKE $1 AND NOT deleted";
-const insert = 'INSERT INTO domains(name, data, "createdTime") VALUES($1, $2, $3) RETURNING *';
-const insertWithId = 'INSERT INTO domains(id, name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *';
+const insert = 'INSERT INTO domains(version, name, data, "createdTime") VALUES($1, $2, $3, $4) RETURNING *';
+const insertWithId = 'INSERT INTO domains(id, version, name, data, "createdTime") VALUES($1, $2, $3, $4, $5) RETURNING *';
 const update =
-    'UPDATE domains SET name = $2, data = $3, "createdTime" = $4, "modifiedTime" = $5, deleted = $6, "deletedTime" = $7 WHERE id = $1 RETURNING *';
+    'UPDATE domains SET version = $2, name = $3, data = $4, "createdTime" = $5, "modifiedTime" = $6, deleted = $7, "deletedTime" = $8 WHERE id = $1 RETURNING *';
 const remove = 'UPDATE domains SET deleted = true, "deletedTime" = $2 WHERE id = $1 AND NOT deleted RETURNING *';
 
 class PgDomainRepository implements DomainRepository {
@@ -70,10 +70,10 @@ class PgDomainRepository implements DomainRepository {
     }
 
     public create(domain: Domain): Promise<Domain> {
-        const { id, name, data, createdTime } = domain;
+        const { id, version, name, data, createdTime } = domain;
         return new Promise((resolve, reject) => {
             const idArr: any[] = id ? [id] : [];
-            const params = idArr.concat(name, data, createdTime);
+            const params = idArr.concat(version, name, data, createdTime);
             this.pool
                 .query(id ? insertWithId : insert, params)
                 .then((response) => resolve(response.rows[0]))
@@ -82,9 +82,9 @@ class PgDomainRepository implements DomainRepository {
     }
 
     public update(domain: Domain): Promise<Domain> {
-        const { id, name, data, createdTime, modifiedTime, deleted, deletedTime } = domain;
+        const { id, version, name, data, createdTime, modifiedTime, deleted, deletedTime } = domain;
         return new Promise((resolve, reject) => {
-            const params = [id!, name, data, createdTime, modifiedTime, deleted, deletedTime];
+            const params = [id!, version, name, data, createdTime, modifiedTime, deleted, deletedTime];
             this.pool
                 .query(update, params)
                 .then((response) => resolve(response.rows[0]))

@@ -69,7 +69,9 @@
 
 ## Get page of domains
 
-**URL** : `/domains?page=<page>&size=<size>`
+**URL** : `/domains?page=<page>&size=<size>&search=<search string>`
+
+**Note** : Search string is optional. The search is case-insensitive and matches any substring in the domain name.
 
 **Method** : `GET`
 

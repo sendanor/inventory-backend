@@ -2,6 +2,7 @@
 
 export default interface Domain {
     id?: string;
+    version: number;
     name: string;
     data: any;
     deleted?: boolean;

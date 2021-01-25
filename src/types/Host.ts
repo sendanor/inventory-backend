@@ -3,6 +3,7 @@
 export default interface Host {
     id?: string;
     domainId: string;
+    version: number;
     name: string;
     data: any;
     deleted?: boolean;
